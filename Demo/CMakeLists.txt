@@ -27,3 +27,13 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 )
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../QSQLite3MultipleCiphers QSQLite3MultipleCiphers)
+
+if(ANDROID)
+    set_property(TARGET ${PROJECT_NAME} APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/android)
+    set_property(TARGET ${PROJECT_NAME} APPEND PROPERTY QT_ANDROID_EXTRA_PLUGINS ${PROJECT_BINARY_DIR}/sqldrivers)
+    add_custom_target(Android SOURCES
+        android/AndroidManifest.xml
+        android/build.gradle
+        android/gradle.properties
+    )
+endif()

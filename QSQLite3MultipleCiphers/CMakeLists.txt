@@ -39,9 +39,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::SqlPrivate
 )
 
-set_target_properties(${PROJECT_NAME} PROPERTIES
-    LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/../sqldrivers"
-)
+set_target_properties(${PROJECT_NAME} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/../sqldrivers)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/SQLite3MultipleCiphers/src)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/SQLite3MultipleCiphers)
