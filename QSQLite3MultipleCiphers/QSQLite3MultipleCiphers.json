@@ -1,0 +1,4 @@
+{
+  "Keys": [ "SQLITE_MULTIPLE_CIPHERS" ],
+  "CLASS_NAME": "QSQLite3MultipleCiphersDriverPlugin"
+}

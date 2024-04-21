@@ -1,0 +1,162 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!--
+***************************************************************************************************
+ Copyright (C) 2023 The Qt Company Ltd.
+ SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+***************************************************************************************************
+-->
+<Project DefaultTargets="Build" ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="SQLite3MultipleCiphers\src\carray.h" />
+    <ClInclude Include="SQLite3MultipleCiphers\src\cipher_common.h" />
+    <ClInclude Include="SQLite3MultipleCiphers\src\cipher_config.h" />
+    <ClInclude Include="SQLite3MultipleCiphers\src\fastpbkdf2.h" />
+    <ClInclude Include="SQLite3MultipleCiphers\src\miniz.h" />
+    <ClInclude Include="SQLite3MultipleCiphers\src\mystdint.h" />
+    <ClInclude Include="SQLite3MultipleCiphers\src\rijndael.h" />
+    <ClInclude Include="SQLite3MultipleCiphers\src\sha1.h" />
+    <ClInclude Include="SQLite3MultipleCiphers\src\sha2.h" />
+    <ClInclude Include="SQLite3MultipleCiphers\src\sqlite3.h" />
+    <ClInclude Include="SQLite3MultipleCiphers\src\sqlite3ext.h" />
+    <ClInclude Include="SQLite3MultipleCiphers\src\sqlite3mc.h" />
+    <ClInclude Include="SQLite3MultipleCiphers\src\sqlite3mc_config.h" />
+    <ClInclude Include="SQLite3MultipleCiphers\src\sqlite3mc_version.h" />
+    <ClInclude Include="SQLite3MultipleCiphers\src\sqlite3mc_vfs.h" />
+    <ClInclude Include="SQLite3MultipleCiphers\src\sqlite3userauth.h" />
+    <ClInclude Include="SQLite3MultipleCiphers\src\zlibwrap.h" />
+    <QtMoc Include="qsql_sqlite_multiple_ciphers_p.h" />
+    <ClInclude Include="qsql_sqlite_vfs_p.h" />
+    <QtMoc Include="qsql_sqlite_p.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="qsql_sqlite.cpp" />
+    <ClCompile Include="qsql_sqlite_multiple_ciphers.cpp" />
+    <ClCompile Include="qsql_sqlite_vfs.cpp" />
+    <ClCompile Include="SQLite3MultipleCiphers\src\sqlite3mc.c" />
+    <QtMoc Include="smain.cpp">
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename).moc</QtMocFileName>
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|x64'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).moc</QtMocFileName>
+    </QtMoc>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="QSQLite3MultipleCiphers.json" />
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{E4E72AEE-2288-4A41-B235-6D3C66DFDE5B}</ProjectGuid>
+    <Keyword>QtVS_v304</Keyword>
+    <WindowsTargetPlatformVersion Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">10.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">10.0</WindowsTargetPlatformVersion>
+    <QtMsBuild Condition="'$(QtMsBuild)'=='' OR !Exists('$(QtMsBuild)\qt.targets')">$(MSBuildProjectDirectory)\QtMsBuild</QtMsBuild>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Condition="Exists('$(QtMsBuild)\qt_defaults.props')">
+    <Import Project="$(QtMsBuild)\qt_defaults.props" />
+  </ImportGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'" Label="QtSettings">
+    <QtInstall>$(DefaultQtVersion)</QtInstall>
+    <QtModules>core;core-private;sql-private</QtModules>
+    <QtBuildConfig>debug</QtBuildConfig>
+    <QtPlugin>true</QtPlugin>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'" Label="QtSettings">
+    <QtInstall>$(DefaultQtVersion)</QtInstall>
+    <QtModules>core;core-private;sql-private</QtModules>
+    <QtBuildConfig>release</QtBuildConfig>
+    <QtPlugin>true</QtPlugin>
+  </PropertyGroup>
+  <Target Name="QtMsBuildNotFound" BeforeTargets="CustomBuild;ClCompile" Condition="!Exists('$(QtMsBuild)\qt.targets') or !Exists('$(QtMsBuild)\qt.props')">
+    <Message Importance="High" Text="QtMsBuild: could not locate qt.targets, qt.props; project may not build correctly." />
+  </Target>
+  <ImportGroup Label="ExtensionSettings" />
+  <ImportGroup Label="Shared" />
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="SQLite3MultipleCiphers\wx_setup.props" />
+    <Import Project="$(QtMsBuild)\Qt.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="SQLite3MultipleCiphers\wx_setup.props" />
+    <Import Project="$(QtMsBuild)\Qt.props" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
+    <OutDir>$(SolutionDir)..\Bin\$(Platform)\$(Configuration)\sqldrivers\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
+    <OutDir>$(SolutionDir)..\Bin\$(Platform)\$(Configuration)\sqldrivers\</OutDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>SQLite3MultipleCiphers\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <QtMoc>
+      <DynamicSource>false</DynamicSource>
+    </QtMoc>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>SQLite3MultipleCiphers\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <QtMoc>
+      <DynamicSource>false</DynamicSource>
+    </QtMoc>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'" Label="Configuration">
+    <ClCompile>
+      <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>QSQLITE3MULTIPLECIPHERS_LIB;QT_DEPRECATED_WARNINGS;QT_NO_AS_CONST;QT_NO_CAST_FROM_ASCII
+;QT_NO_CAST_TO_ASCII
+;QT_NO_CONTEXTLESS_CONNECT;QT_NO_EXCEPTIONS;QT_NO_FOREACH;QT_NO_NARROWING_CONVERSIONS_IN_CONNECT;QT_NO_QEXCHANGE;QT_USE_QSTRINGBUILDER;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;CODEC_TYPE=$(CODEC_TYPE);SQLITE_ENABLE_DEBUG=$(SQLITE_ENABLE_DEBUG);SQLITE_THREADSAFE=1;SQLITE_DQS=0;SQLITE_MAX_ATTACHED=10;SQLITE_ENABLE_EXPLAIN_COMMENTS=1;SQLITE_SOUNDEX=1;SQLITE_ENABLE_COLUMN_METADATA=1;SQLITE_SECURE_DELETE=1;SQLITE_ENABLE_DESERIALIZE=1;SQLITE_ENABLE_FTS3=1;SQLITE_ENABLE_FTS3_PARENTHESIS=1;SQLITE_ENABLE_FTS4=1;SQLITE_ENABLE_FTS5=1;SQLITE_ENABLE_RTREE=1;SQLITE_ENABLE_GEOPOLY=1;SQLITE_ENABLE_PREUPDATE_HOOK=1;SQLITE_ENABLE_SESSION=1;SQLITE_CORE=1;SQLITE_ENABLE_EXTFUNC=1;SQLITE_ENABLE_MATH_FUNCTIONS=1;SQLITE_ENABLE_CSV=1;SQLITE_ENABLE_VSV=1;SQLITE_ENABLE_CARRAY=1;SQLITE_ENABLE_UUID=1;SQLITE3MC_SECURE_MEMORY=$(SQLITE3MC_SECURE_MEMORY);SQLITE_TEMP_STORE=2;SQLITE_USE_URI=1;SQLITE_USER_AUTHENTICATION=0;SQLITE_ENABLE_DBPAGE_VTAB=1;SQLITE_ENABLE_DBSTAT_VTAB=1;SQLITE_ENABLE_STMTVTAB=1;SQLITE_ENABLE_UNKNOWN_SQL_FUNCTION=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'" Label="Configuration">
+    <ClCompile>
+      <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <DebugInformationFormat>None</DebugInformationFormat>
+      <Optimization>MaxSpeed</Optimization>
+      <PreprocessorDefinitions>QSQLITE3MULTIPLECIPHERS_LIB;QT_DEPRECATED_WARNINGS;QT_NO_AS_CONST;QT_NO_CAST_FROM_ASCII
+;QT_NO_CAST_TO_ASCII
+;QT_NO_CONTEXTLESS_CONNECT;QT_NO_EXCEPTIONS;QT_NO_FOREACH;QT_NO_NARROWING_CONVERSIONS_IN_CONNECT;QT_NO_QEXCHANGE;QT_USE_QSTRINGBUILDER;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;CODEC_TYPE=$(CODEC_TYPE);SQLITE_ENABLE_DEBUG=$(SQLITE_ENABLE_DEBUG);SQLITE_THREADSAFE=1;SQLITE_DQS=0;SQLITE_MAX_ATTACHED=10;SQLITE_ENABLE_EXPLAIN_COMMENTS=1;SQLITE_SOUNDEX=1;SQLITE_ENABLE_COLUMN_METADATA=1;SQLITE_SECURE_DELETE=1;SQLITE_ENABLE_DESERIALIZE=1;SQLITE_ENABLE_FTS3=1;SQLITE_ENABLE_FTS3_PARENTHESIS=1;SQLITE_ENABLE_FTS4=1;SQLITE_ENABLE_FTS5=1;SQLITE_ENABLE_RTREE=1;SQLITE_ENABLE_GEOPOLY=1;SQLITE_ENABLE_PREUPDATE_HOOK=1;SQLITE_ENABLE_SESSION=1;SQLITE_CORE=1;SQLITE_ENABLE_EXTFUNC=1;SQLITE_ENABLE_MATH_FUNCTIONS=1;SQLITE_ENABLE_CSV=1;SQLITE_ENABLE_VSV=1;SQLITE_ENABLE_CARRAY=1;SQLITE_ENABLE_UUID=1;SQLITE3MC_SECURE_MEMORY=$(SQLITE3MC_SECURE_MEMORY);SQLITE_TEMP_STORE=2;SQLITE_USE_URI=1;SQLITE_USER_AUTHENTICATION=0;SQLITE_ENABLE_DBPAGE_VTAB=1;SQLITE_ENABLE_DBSTAT_VTAB=1;SQLITE_ENABLE_STMTVTAB=1;SQLITE_ENABLE_UNKNOWN_SQL_FUNCTION=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">
+    <Import Project="$(QtMsBuild)\qt.targets" />
+  </ImportGroup>
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

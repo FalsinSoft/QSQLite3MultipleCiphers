@@ -1,0 +1,109 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>qml;cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>qrc;rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Header Files\SQLite3MultipleCiphers">
+      <UniqueIdentifier>{1f93da56-2fe0-47c1-87d6-91c632285bae}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\SQLite3MultipleCiphers">
+      <UniqueIdentifier>{27351f0f-5657-4dcb-a525-e1d880bd47b3}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="qsql_sqlite_vfs_p.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SQLite3MultipleCiphers\src\carray.h">
+      <Filter>Header Files\SQLite3MultipleCiphers</Filter>
+    </ClInclude>
+    <ClInclude Include="SQLite3MultipleCiphers\src\cipher_common.h">
+      <Filter>Header Files\SQLite3MultipleCiphers</Filter>
+    </ClInclude>
+    <ClInclude Include="SQLite3MultipleCiphers\src\cipher_config.h">
+      <Filter>Header Files\SQLite3MultipleCiphers</Filter>
+    </ClInclude>
+    <ClInclude Include="SQLite3MultipleCiphers\src\fastpbkdf2.h">
+      <Filter>Header Files\SQLite3MultipleCiphers</Filter>
+    </ClInclude>
+    <ClInclude Include="SQLite3MultipleCiphers\src\miniz.h">
+      <Filter>Header Files\SQLite3MultipleCiphers</Filter>
+    </ClInclude>
+    <ClInclude Include="SQLite3MultipleCiphers\src\mystdint.h">
+      <Filter>Header Files\SQLite3MultipleCiphers</Filter>
+    </ClInclude>
+    <ClInclude Include="SQLite3MultipleCiphers\src\rijndael.h">
+      <Filter>Header Files\SQLite3MultipleCiphers</Filter>
+    </ClInclude>
+    <ClInclude Include="SQLite3MultipleCiphers\src\sha1.h">
+      <Filter>Header Files\SQLite3MultipleCiphers</Filter>
+    </ClInclude>
+    <ClInclude Include="SQLite3MultipleCiphers\src\sha2.h">
+      <Filter>Header Files\SQLite3MultipleCiphers</Filter>
+    </ClInclude>
+    <ClInclude Include="SQLite3MultipleCiphers\src\sqlite3.h">
+      <Filter>Header Files\SQLite3MultipleCiphers</Filter>
+    </ClInclude>
+    <ClInclude Include="SQLite3MultipleCiphers\src\sqlite3ext.h">
+      <Filter>Header Files\SQLite3MultipleCiphers</Filter>
+    </ClInclude>
+    <ClInclude Include="SQLite3MultipleCiphers\src\sqlite3mc.h">
+      <Filter>Header Files\SQLite3MultipleCiphers</Filter>
+    </ClInclude>
+    <ClInclude Include="SQLite3MultipleCiphers\src\sqlite3mc_config.h">
+      <Filter>Header Files\SQLite3MultipleCiphers</Filter>
+    </ClInclude>
+    <ClInclude Include="SQLite3MultipleCiphers\src\sqlite3mc_version.h">
+      <Filter>Header Files\SQLite3MultipleCiphers</Filter>
+    </ClInclude>
+    <ClInclude Include="SQLite3MultipleCiphers\src\sqlite3mc_vfs.h">
+      <Filter>Header Files\SQLite3MultipleCiphers</Filter>
+    </ClInclude>
+    <ClInclude Include="SQLite3MultipleCiphers\src\sqlite3userauth.h">
+      <Filter>Header Files\SQLite3MultipleCiphers</Filter>
+    </ClInclude>
+    <ClInclude Include="SQLite3MultipleCiphers\src\zlibwrap.h">
+      <Filter>Header Files\SQLite3MultipleCiphers</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <QtMoc Include="qsql_sqlite_p.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="smain.cpp">
+      <Filter>Source Files</Filter>
+    </QtMoc>
+    <QtMoc Include="qsql_sqlite_multiple_ciphers_p.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="qsql_sqlite.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="qsql_sqlite_multiple_ciphers.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="qsql_sqlite_vfs.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SQLite3MultipleCiphers\src\sqlite3mc.c">
+      <Filter>Source Files\SQLite3MultipleCiphers</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="QSQLite3MultipleCiphers.json">
+      <Filter>Resource Files</Filter>
+    </None>
+  </ItemGroup>
+</Project>
