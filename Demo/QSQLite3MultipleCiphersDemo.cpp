@@ -63,6 +63,7 @@ QString QSQLite3MultipleCiphersDemo::makeOptionsLine() const
 
     options << QString("QSQLITE_MC_KEY=%1").arg(ui.password->text().trimmed());
     if(ui.setNewPassword->isChecked()) options << QString("QSQLITE_MC_UPDATE_KEY=%1").arg(ui.newPassword->text().trimmed());
+    options << QString("QSQLITE_MC_CIPHER=%1").arg(ui.cipher->currentText());
 
     return options.join(";");
 }

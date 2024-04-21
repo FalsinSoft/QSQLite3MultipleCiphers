@@ -22,17 +22,77 @@ bool QSQLite3MultipleCiphersDriver::open(const QString &db, const QString &user,
     {
         const auto options = QString(connOpts).remove(QLatin1Char(' ')).split(QLatin1Char(';'));
         const auto handle = qvariant_cast<sqlite3*>(QSQLiteDriver::handle());
-        QString key, updateKey;
+        QString key, updateKey, cipher;
+        QStringList configs;
 
         for(const auto option : options)
         {
+            QString cipherConfig;
+
             if(parseOption(option, QLatin1String("QSQLITE_MC_KEY"), &key)
-            || parseOption(option, QLatin1String("QSQLITE_MC_UPDATE_KEY"), &updateKey))
+            || parseOption(option, QLatin1String("QSQLITE_MC_UPDATE_KEY"), &updateKey)
+            || parseOption(option, QLatin1String("QSQLITE_MC_CIPHER"), &cipher)
+            || parseOption(option, QLatin1String("QSQLITE_MC_CIPHER_CONFIG"), &cipherConfig))
             {
-                continue;
+                if(!cipherConfig.isEmpty()) configs << cipherConfig;
             }
         }
 
+        if(!cipher.isEmpty())
+        {
+            const int cipherIndex = sqlite3mc_cipher_index(cipher.toStdString().c_str());
+
+            if(cipherIndex == -1)
+            {
+                qWarning() << "Incorrect cipher name";
+                QSQLiteDriver::close();
+                return false;
+            }
+            if(sqlite3mc_config(handle, "default:cipher", cipherIndex) == -1)
+            {
+                qWarning() << "Unable to set cipher";
+                QSQLiteDriver::close();
+                return false;
+            }
+        }
+        for(const auto &config : configs)
+        {
+            const QStringList params = config.split(QLatin1String(":"));
+            QString name, param;
+            bool validValue;
+            int value;
+
+            if(params.size() != 3)
+            {
+                qWarning() << "Incorrect cipher config params (" << config << ")";
+                QSQLiteDriver::close();
+                return false;
+            }
+            name = params.at(0);
+            param = params.at(1);
+            value = params.at(2).toInt(&validValue, params.at(2).toLower().startsWith(QLatin1String("0x")) ? 16 : 10);
+            if(sqlite3mc_cipher_index(name.toStdString().c_str()) == -1)
+            {
+                qWarning() << "Incorrect cipher name";
+                QSQLiteDriver::close();
+                return false;
+            }
+            if(validValue == false)
+            {
+                qWarning() << "Incorrect cipher value";
+                QSQLiteDriver::close();
+                return false;
+            }
+            if(sqlite3mc_config_cipher(handle,
+                                       name.toStdString().c_str(),
+                                       param.toStdString().c_str(),
+                                       value) == -1)
+            {
+                qWarning() << "Unable to set cipher config value";
+                QSQLiteDriver::close();
+                return false;
+            }
+        }
         if(!key.isEmpty())
         {
             auto execCallback = [](void *variable, int x, char **y, char **z)-> int

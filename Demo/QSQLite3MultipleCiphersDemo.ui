@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>560</width>
+    <width>559</width>
     <height>400</height>
    </rect>
   </property>
@@ -73,6 +73,57 @@
         <property name="enabled">
          <bool>false</bool>
         </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <layout class="QHBoxLayout" name="horizontalLayout_4">
+      <property name="spacing">
+       <number>10</number>
+      </property>
+      <item>
+       <widget class="QLabel" name="label_3">
+        <property name="text">
+         <string>Cipher:</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="cipher">
+        <property name="currentIndex">
+         <number>3</number>
+        </property>
+        <item>
+         <property name="text">
+          <string>aes128cbc</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>aes256cbc</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>chacha20</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>sqlcipher</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>rc4</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>ascon128</string>
+         </property>
+        </item>
        </widget>
       </item>
      </layout>
