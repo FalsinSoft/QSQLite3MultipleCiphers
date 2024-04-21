@@ -11,8 +11,8 @@ endmacro()
 set(_SQLITE3MC_REQUIRE_ZLIB OFF)
 
 OPTION(SQLITE3MC_STATIC_RUNTIME_LINK "Link the c++ runtime statically" OFF)
-OPTION(SQLITE3MC_STATIC "Build SQLITE3MC as a static library" OFF)
-OPTION(SQLITE3MC_BUILD_SHELL "Builds the SQLITE3MC Shell" ON)
+OPTION(SQLITE3MC_STATIC "Build SQLITE3MC as a static library" ON)
+OPTION(SQLITE3MC_BUILD_SHELL "Builds the SQLITE3MC Shell" OFF)
 OPTION(SQLITE3MC_WITH_ICU "Builds SQLITE3MC with the ICU library. Will use the FindICU function to locate the library. (https://cmake.org/cmake/help/latest/module/FindICU.html)" OFF)
 
 OPTION(SQLITE_ENABLE_DEBUG "Enable SQLite debugging" OFF)
