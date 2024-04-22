@@ -63,7 +63,10 @@ QString QSQLite3MultipleCiphersDemo::makeOptionsLine() const
 
     options << QString("QSQLITE_MC_KEY=%1").arg(ui.password->text().trimmed());
     if(ui.setNewPassword->isChecked()) options << QString("QSQLITE_MC_UPDATE_KEY=%1").arg(ui.newPassword->text().trimmed());
+    if(ui.setRemovePassword->isChecked()) options << QString("QSQLITE_MC_REMOVE_KEY=%1").arg(ui.removePassword->text().trimmed());
     options << QString("QSQLITE_MC_CIPHER=%1").arg(ui.cipher->currentText());
+    options << QString("QSQLITE_MC_CIPHER_CONFIG=%1:%2:%3").arg(ui.cipher->currentText()).arg("kdf_iter").arg(ui.kdf_iter->text());
+    options << QString("QSQLITE_MC_CIPHER_CONFIG=%1:%2:%3").arg(ui.cipher->currentText()).arg("kdf_algorithm").arg(ui.kdf_algorithm->text());
 
     return options.join(";");
 }
