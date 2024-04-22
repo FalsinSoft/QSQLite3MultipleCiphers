@@ -16,13 +16,19 @@ QSQLite3MultipleCiphersDriver::QSQLite3MultipleCiphersDriver(sqlite3 *connection
 {
 }
 
+QSQLite3MultipleCiphersDriver::~QSQLite3MultipleCiphersDriver()
+{
+    QSQLiteDriver::close();
+    sqlite3_shutdown();
+}
+
 bool QSQLite3MultipleCiphersDriver::open(const QString &db, const QString &user, const QString &password, const QString &host, int port, const QString &connOpts)
 {
     if(QSQLiteDriver::open(db, user, password, host, port, connOpts))
     {
-        const auto options = QString(connOpts).remove(QLatin1Char(' ')).split(QLatin1Char(';'));
         const auto handle = qvariant_cast<sqlite3*>(QSQLiteDriver::handle());
-        QString key, updateKey, cipher;
+        const auto options = connOpts.split(QLatin1Char(';'));
+        QString key, updateKey, removeKey, cipher;
         QStringList configs;
 
         for(const auto option : options)
@@ -31,6 +37,7 @@ bool QSQLite3MultipleCiphersDriver::open(const QString &db, const QString &user,
 
             if(parseOption(option, QLatin1String("QSQLITE_MC_KEY"), &key)
             || parseOption(option, QLatin1String("QSQLITE_MC_UPDATE_KEY"), &updateKey)
+            || parseOption(option, QLatin1String("QSQLITE_MC_REMOVE_KEY"), &removeKey)
             || parseOption(option, QLatin1String("QSQLITE_MC_CIPHER"), &cipher)
             || parseOption(option, QLatin1String("QSQLITE_MC_CIPHER_CONFIG"), &cipherConfig))
             {
@@ -48,7 +55,7 @@ bool QSQLite3MultipleCiphersDriver::open(const QString &db, const QString &user,
                 QSQLiteDriver::close();
                 return false;
             }
-            if(sqlite3mc_config(handle, "default:cipher", cipherIndex) == -1)
+            if(sqlite3mc_config(handle, "cipher", cipherIndex) == -1)
             {
                 qWarning() << "Unable to set cipher";
                 QSQLiteDriver::close();
@@ -57,7 +64,7 @@ bool QSQLite3MultipleCiphersDriver::open(const QString &db, const QString &user,
         }
         for(const auto &config : configs)
         {
-            const QStringList params = config.split(QLatin1String(":"));
+            const auto params = config.split(QLatin1Char(':'));
             QString name, param;
             bool validValue;
             int value;
@@ -111,11 +118,21 @@ bool QSQLite3MultipleCiphersDriver::open(const QString &db, const QString &user,
             }
             if(emptyDatabase) sqlite3_exec(handle, "VACUUM", NULL, NULL, NULL); // Required to encrypt database first time
         }
-        if(!updateKey.isEmpty())
+        else if(!updateKey.isEmpty())
         {
             if(sqlite3_rekey(handle, updateKey.toStdString().c_str(), updateKey.length()) != SQLITE_OK)
             {
                 qWarning() << "Failed to change database key";
+                QSQLiteDriver::close();
+                return false;
+            }
+        }
+        else if(!removeKey.isEmpty())
+        {
+            if(sqlite3_key(handle, removeKey.toStdString().c_str(), removeKey.length()) != SQLITE_OK
+            || sqlite3_rekey(handle, NULL, 0) != SQLITE_OK)
+            {
+                qWarning() << "Failed to remove database key";
                 QSQLiteDriver::close();
                 return false;
             }

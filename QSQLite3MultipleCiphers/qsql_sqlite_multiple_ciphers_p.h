@@ -17,6 +17,7 @@ class Q_EXPORT_SQLDRIVER_SQLITE_MULTIPLE_CIPHERS QSQLite3MultipleCiphersDriver :
 public:
     explicit QSQLite3MultipleCiphersDriver(QObject *parent = nullptr);
     explicit QSQLite3MultipleCiphersDriver(sqlite3 *connection, QObject *parent = nullptr);
+    ~QSQLite3MultipleCiphersDriver();
     bool open(const QString &db,
               const QString &user,
               const QString &password,
