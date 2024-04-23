@@ -14,6 +14,14 @@ QT_BEGIN_NAMESPACE
 class Q_EXPORT_SQLDRIVER_SQLITE_MULTIPLE_CIPHERS QSQLite3MultipleCiphersDriver : public QSQLiteDriver
 {
     Q_OBJECT
+
+    struct CipherConfig
+    {
+        QString param;
+        int value;
+    };
+    using CipherConfigs = QList<CipherConfig>;
+
 public:
     explicit QSQLite3MultipleCiphersDriver(QObject *parent = nullptr);
     explicit QSQLite3MultipleCiphersDriver(sqlite3 *connection, QObject *parent = nullptr);
@@ -27,7 +35,7 @@ public:
 
 private:
     bool parseOption(const QString &line, const QString &name, QString *value) const;
-    bool parseOption(const QString &line, const QString &name, int *value) const;
+    bool setCipherConfiguration(sqlite3 *handle, const QString &cipher, const CipherConfigs &configs) const;
 };
 
 QT_END_NAMESPACE
