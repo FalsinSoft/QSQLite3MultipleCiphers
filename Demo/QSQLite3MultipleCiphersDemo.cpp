@@ -1,7 +1,7 @@
 #include <QSqlQuery>
 #include <QSqlError>
 #include <QMessageBox>
-#include <QSqlDatabase>
+#include <QInputDialog>
 #include "QSQLite3MultipleCiphersDemo.h"
 #include <QDir>
 QSQLite3MultipleCiphersDemo::QSQLite3MultipleCiphersDemo(QWidget *parent) : QMainWindow(parent)
@@ -14,35 +14,40 @@ QSQLite3MultipleCiphersDemo::~QSQLite3MultipleCiphersDemo()
 
 void QSQLite3MultipleCiphersDemo::on_createDatabaseButton_clicked()
 {
-    QSqlDatabase db;
+    const QString fileName(ui.fileName->text().trimmed());
+    QString password;
 
-    if(!QSqlDatabase::isDriverAvailable("SQLITE_MULTIPLE_CIPHERS"))
+    if(!connectDatabase()) return;
+
+    password = QInputDialog::getText(this, tr("Insert password"), QString());
+    if(password.isEmpty())
     {
         QMessageBox::warning(this,
                              tr("Warning"),
-                             tr("Database driver not loaded"));
-        return;
-    }
-    db = QSqlDatabase::addDatabase("SQLITE_MULTIPLE_CIPHERS");
-    if(!db.isValid())
-    {
-        QMessageBox::warning(this,
-                                tr("Warning"),
-                                tr("Unable to add database"));
+                             tr("Insert a valid password"));
         return;
     }
 
-    db.setDatabaseName(ui.fileName->text().trimmed());
-    db.setConnectOptions(makeOptionsLine());
+    m_db.setDatabaseName(fileName);
+    m_db.setConnectOptions(makeOptionsLine(QStringList() << QString("QSQLITE_MC_KEY=%1").arg(password)));
 
-    if(db.open())
+    QFile::remove(fileName);
+    if(m_db.open())
     {
-        QSqlQuery query(db);
+        QSqlQuery query(m_db);
 
         query.exec("CREATE TABLE test_table (string_field TEXT, number_field INTEGER)");
         query.exec("INSERT INTO test_table (string_field, number_field) VALUES ('abcdefghi', 1234)");
 
-        db.close();
+        if(!checkDatabase())
+        {
+            QMessageBox::warning(this,
+                                 tr("Error"),
+                                 tr("Unable to query database"));
+            m_db.close();
+            return;
+        }
+        m_db.close();
     }
     else
     {
@@ -57,16 +62,146 @@ void QSQLite3MultipleCiphersDemo::on_createDatabaseButton_clicked()
                              tr("Database created successfully"));
 }
 
-QString QSQLite3MultipleCiphersDemo::makeOptionsLine() const
+void QSQLite3MultipleCiphersDemo::on_changePasswordButton_clicked()
 {
-    QStringList options;
+    const QString fileName(ui.fileName->text().trimmed());
+    QString password, newPassword;
 
-    options << QString("QSQLITE_MC_KEY=%1").arg(ui.password->text().trimmed());
-    if(ui.setNewPassword->isChecked()) options << QString("QSQLITE_MC_UPDATE_KEY=%1").arg(ui.newPassword->text().trimmed());
-    if(ui.setRemovePassword->isChecked()) options << QString("QSQLITE_MC_REMOVE_KEY=%1").arg(ui.removePassword->text().trimmed());
+    if(!connectDatabase()) return;
+
+    password = QInputDialog::getText(this, tr("Insert current password"), QString());
+    if(password.isEmpty())
+    {
+        QMessageBox::warning(this,
+                             tr("Warning"),
+                             tr("Insert a valid password"));
+        return;
+    }
+    newPassword = QInputDialog::getText(this, tr("Insert new password"), QString());
+    if(newPassword.isEmpty())
+    {
+        QMessageBox::warning(this,
+                             tr("Warning"),
+                             tr("Insert a valid password"));
+        return;
+    }
+
+    m_db.setDatabaseName(fileName);
+    m_db.setConnectOptions(makeOptionsLine(QStringList() << QString("QSQLITE_MC_KEY=%1").arg(password) << QString("QSQLITE_MC_UPDATE_KEY=%1").arg(newPassword)));
+
+    if(!m_db.open())
+    {
+        QMessageBox::warning(this,
+                             tr("Warning"),
+                             tr("Unable to open database"));
+        return;
+    }
+    if(!checkDatabase())
+    {
+        QMessageBox::warning(this,
+                             tr("Error"),
+                             tr("Unable to query database"));
+        m_db.close();
+        return;
+    }
+    m_db.close();
+
+    QMessageBox::information(this,
+                             tr("Information"),
+                             tr("Password changed successfully"));
+}
+
+void QSQLite3MultipleCiphersDemo::on_removePasswordButton_clicked()
+{
+    const QString fileName(ui.fileName->text().trimmed());
+    QString password;
+
+    if(!connectDatabase()) return;
+
+    password = QInputDialog::getText(this, tr("Insert current password"), QString());
+    if(password.isEmpty())
+    {
+        QMessageBox::warning(this,
+                             tr("Warning"),
+                             tr("Insert a valid password"));
+        return;
+    }
+
+    m_db.setDatabaseName(fileName);
+    m_db.setConnectOptions(makeOptionsLine(QStringList() << QString("QSQLITE_MC_REMOVE_KEY=%1").arg(password)));
+
+    if(!m_db.open())
+    {
+        QMessageBox::warning(this,
+                             tr("Warning"),
+                             tr("Unable to open database"));
+        return;
+    }
+    if(!checkDatabase())
+    {
+        QMessageBox::warning(this,
+                             tr("Error"),
+                             tr("Unable to query database"));
+        m_db.close();
+        return;
+    }
+    m_db.close();
+
+    QMessageBox::information(this,
+                             tr("Information"),
+                             tr("Password removed successfully"));
+}
+
+QString QSQLite3MultipleCiphersDemo::makeOptionsLine(const QStringList &extraOptions) const
+{
+    QStringList options(extraOptions);
+
     options << QString("QSQLITE_MC_CIPHER=%1").arg(ui.cipher->currentText());
-    options << QString("QSQLITE_MC_CIPHER_CONFIG=%1:%2:%3").arg(ui.cipher->currentText()).arg("kdf_iter").arg(ui.kdf_iter->text());
-    options << QString("QSQLITE_MC_CIPHER_CONFIG=%1:%2:%3").arg(ui.cipher->currentText()).arg("kdf_algorithm").arg(ui.kdf_algorithm->text());
+    options << QString("QSQLITE_MC_CIPHER_CONFIG=%1:%2").arg("kdf_iter").arg(ui.kdf_iter->text());
+    options << QString("QSQLITE_MC_CIPHER_CONFIG=%1:%2").arg("kdf_algorithm").arg(ui.kdf_algorithm->text());
 
     return options.join(";");
+}
+
+bool QSQLite3MultipleCiphersDemo::connectDatabase()
+{
+    if(!m_db.isValid())
+    {
+        if(!QSqlDatabase::isDriverAvailable("SQLITE_MULTIPLE_CIPHERS"))
+        {
+            QMessageBox::warning(this,
+                                 tr("Warning"),
+                                 tr("Database driver not loaded"));
+            return false;
+        }
+        m_db = QSqlDatabase::addDatabase("SQLITE_MULTIPLE_CIPHERS");
+        if(!m_db.isValid())
+        {
+            QMessageBox::warning(this,
+                                 tr("Warning"),
+                                 tr("Unable to add database"));
+            return false;
+        }
+
+        return true;
+    }
+
+    return true;
+}
+
+bool QSQLite3MultipleCiphersDemo::checkDatabase() const
+{
+    QSqlQuery query(m_db);
+
+    query.exec("SELECT string_field, number_field FROM test_table");
+    if(query.next())
+    {
+        if(query.value(0).toString() == "abcdefghi"
+        && query.value(1).toInt() == 1234)
+        {
+            return true;
+        }
+    }
+
+    return false;
 }
