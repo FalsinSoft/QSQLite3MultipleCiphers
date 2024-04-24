@@ -24,27 +24,32 @@ QSQLite3MultipleCiphersDriver::~QSQLite3MultipleCiphersDriver()
 
 bool QSQLite3MultipleCiphersDriver::open(const QString &db, const QString &user, const QString &password, const QString &host, int port, const QString &connOpts)
 {
-    if(QSQLiteDriver::open(db, user, password, host, port, connOpts))
+    QStringList options(connOpts.split(QLatin1Char(';')));
+    QString key, updateKey, removeKey, cipher;
+    QStringList configs;
+
+    for(auto option = options.constBegin(); option != options.constEnd();)
+    {
+        QString config;
+
+        if(parseOption(*option, QLatin1String("QSQLITE_MC_KEY"), &key)
+        || parseOption(*option, QLatin1String("QSQLITE_MC_UPDATE_KEY"), &updateKey)
+        || parseOption(*option, QLatin1String("QSQLITE_MC_REMOVE_KEY"), &removeKey)
+        || parseOption(*option, QLatin1String("QSQLITE_MC_CIPHER"), &cipher)
+        || parseOption(*option, QLatin1String("QSQLITE_MC_CIPHER_CONFIG"), &config))
+        {
+            if(!config.isEmpty()) configs << config;
+            option = options.erase(option);
+            continue;
+        }
+
+        ++option;
+    }
+
+    if(QSQLiteDriver::open(db, user, password, host, port, options.join(QLatin1Char(';'))))
     {
         const auto handle = qvariant_cast<sqlite3*>(QSQLiteDriver::handle());
-        const auto options = connOpts.split(QLatin1Char(';'));
-        QString key, updateKey, removeKey, cipher;
         CipherConfigs cipherConfigs;
-        QStringList configs;
-
-        for(const auto option : options)
-        {
-            QString config;
-
-            if(parseOption(option, QLatin1String("QSQLITE_MC_KEY"), &key)
-            || parseOption(option, QLatin1String("QSQLITE_MC_UPDATE_KEY"), &updateKey)
-            || parseOption(option, QLatin1String("QSQLITE_MC_REMOVE_KEY"), &removeKey)
-            || parseOption(option, QLatin1String("QSQLITE_MC_CIPHER"), &cipher)
-            || parseOption(option, QLatin1String("QSQLITE_MC_CIPHER_CONFIG"), &config))
-            {
-                if(!config.isEmpty()) configs << config;
-            }
-        }
 
         if(!cipher.isEmpty())
         {
