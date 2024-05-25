@@ -3,7 +3,7 @@
 ** Purpose:     Amalgamation of the SQLite3 Multiple Ciphers encryption extension for SQLite
 ** Author:      Ulrich Telle
 ** Created:     2020-02-28
-** Copyright:   (c) 2006-2022 Ulrich Telle
+** Copyright:   (c) 2006-2024 Ulrich Telle
 ** License:     MIT
 */
 
@@ -160,10 +160,6 @@ sqlite3mcVersion(sqlite3_context* context, int argc, sqlite3_value** argv)
 SQLITE_PRIVATE void sqlite3mcSetMemorySecurity(int value);
 SQLITE_PRIVATE int sqlite3mcGetMemorySecurity();
 
-#ifndef SQLITE3MC_USE_RANDOM_FILL_MEMORY
-#define SQLITE3MC_USE_RANDOM_FILL_MEMORY 0
-#endif
-
 /* Memory locking is currently not supported */
 #ifdef SQLITE3MC_ENABLE_MEMLOCK
 #undef SQLITE3MC_ENABLE_MEMLOCK
@@ -179,7 +175,7 @@ SQLITE_PRIVATE int sqlite3mcGetMemorySecurity();
 #include "sha1.c"
 #include "sha2.c"
 
-#if HAVE_CIPHER_CHACHA20 || HAVE_CIPHER_SQLCIPHER
+#if HAVE_CIPHER_CHACHA20 || HAVE_CIPHER_SQLCIPHER || HAVE_CIPHER_ASCON128
 #include "fastpbkdf2.c"
 
 /* Prototypes for several crypto functions to make pedantic compilers happy */
@@ -662,6 +658,7 @@ sqlite3mcTermCipherTables()
       sqlite3_free(globalCodecParameterTable[n].m_params);
     }
   }
+  globalCipherCount = 0;
 }
 
 int

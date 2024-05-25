@@ -4,9 +4,10 @@
 #include <QInputDialog>
 #include "QSQLite3MultipleCiphersDemo.h"
 #include <QDir>
-QSQLite3MultipleCiphersDemo::QSQLite3MultipleCiphersDemo(QWidget *parent) : QMainWindow(parent)
+QSQLite3MultipleCiphersDemo::QSQLite3MultipleCiphersDemo(QWidget *parent) : QMainWindow(parent, Qt::Dialog)
 {
     ui.setupUi(this);
+    setFixedSize(width(), height());
 }
 
 QSQLite3MultipleCiphersDemo::~QSQLite3MultipleCiphersDemo()
