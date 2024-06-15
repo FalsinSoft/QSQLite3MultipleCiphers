@@ -338,6 +338,8 @@ GetHmacSizeSQLCipherCipher(int algorithm)
       hmacSize = SHA1_DIGEST_SIZE;
       break;
     case SQLCIPHER_HMAC_ALGORITHM_SHA256:
+      hmacSize = SHA256_DIGEST_SIZE;
+      break;
     case SQLCIPHER_HMAC_ALGORITHM_SHA512:
     default:
       hmacSize = SHA512_DIGEST_SIZE;
@@ -356,7 +358,7 @@ EncryptPageSQLCipherCipher(void* cipher, int page, unsigned char* data, int len,
   int n = len - nReserved;
   int offset = (page == 1) ? (sqlCipherCipher->m_legacy != 0) ? 16 : 24 : 0;
   int blen;
-  unsigned char iv[64];
+  unsigned char iv[128];
   int usePlaintextHeader = 0;
 
   /* Check whether a plaintext header should be used */
@@ -373,10 +375,10 @@ EncryptPageSQLCipherCipher(void* cipher, int page, unsigned char* data, int len,
   }
 
   /* Generate nonce (64 bytes) */
-  memset(iv, 0, 64);
+  memset(iv, 0, 128);
   if (nReserved > 0)
   {
-    chacha20_rng(iv, 64);
+    chacha20_rng(iv, 128);
   }
   else
   {

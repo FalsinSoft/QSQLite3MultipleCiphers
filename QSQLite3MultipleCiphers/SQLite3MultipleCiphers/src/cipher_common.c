@@ -207,6 +207,7 @@ sqlite3mcCodecInit(Codec* codec)
     memset(codec->m_page, 0, sizeof(codec->m_page));
     codec->m_pageSize = 0;
     codec->m_reserved = 0;
+    codec->m_lastError = SQLITE_OK;
     codec->m_hasKeySalt = 0;
     memset(codec->m_keySalt, 0, sizeof(codec->m_keySalt));
   }
@@ -414,7 +415,7 @@ sqlite3mcGetLegacyWriteCipher(Codec* codec)
 SQLITE_PRIVATE int
 sqlite3mcGetPageSizeReadCipher(Codec* codec)
 {
-  int pageSize = (codec->m_hasReadCipher  && codec->m_readCipher != NULL) ? globalCodecDescriptorTable[codec->m_readCipherType - 1].m_getPageSize(codec->m_readCipher) : 0;
+  int pageSize = (codec->m_hasReadCipher  && codec->m_readCipher != NULL) ? globalCodecDescriptorTable[codec->m_readCipherType - 1].m_getPageSize(codec->m_readCipher) : -1;
   return pageSize;
 }
 
@@ -445,6 +446,21 @@ sqlite3mcReservedEqual(Codec* codec)
   int readReserved  = (codec->m_hasReadCipher  && codec->m_readCipher  != NULL) ? globalCodecDescriptorTable[codec->m_readCipherType-1].m_getReserved(codec->m_readCipher)   : -1;
   int writeReserved = (codec->m_hasWriteCipher && codec->m_writeCipher != NULL) ? globalCodecDescriptorTable[codec->m_writeCipherType-1].m_getReserved(codec->m_writeCipher) : -1;
   return (readReserved == writeReserved);
+}
+
+SQLITE_PRIVATE void
+sqlite3mcSetCodecLastError(Codec* codec, int error)
+{
+  if (codec)
+  {
+    codec->m_lastError = error;
+  }
+}
+
+SQLITE_PRIVATE int
+sqlite3mcGetCodecLastError(Codec* codec)
+{
+  return codec ? codec->m_lastError : SQLITE_OK;
 }
 
 SQLITE_PRIVATE unsigned char*
@@ -500,6 +516,9 @@ sqlite3mcCodecCopy(Codec* codec, Codec* other)
   codec->m_bt = other->m_bt;
 #endif
   codec->m_btShared = other->m_btShared;
+
+  codec->m_lastError = SQLITE_OK;
+
   return rc;
 }
 
@@ -610,7 +629,7 @@ sqlite3mcConfigureSQLCipherVersion(sqlite3* db, int configDefault, int legacyVer
   static char* defNames[] = { "default:legacy_page_size", "default:kdf_iter", "default:hmac_use", "default:kdf_algorithm", "default:hmac_algorithm", NULL };
   static int versionParams[SQLCIPHER_VERSION_MAX][5] =
   {
-    { 1024,   4000, 0, SQLCIPHER_KDF_ALGORITHM_SHA1,   SQLCIPHER_HMAC_ALGORITHM_SHA1   }, 
+    { 1024,   4000, 0, SQLCIPHER_KDF_ALGORITHM_SHA1,   SQLCIPHER_HMAC_ALGORITHM_SHA1   },
     { 1024,   4000, 1, SQLCIPHER_KDF_ALGORITHM_SHA1,   SQLCIPHER_HMAC_ALGORITHM_SHA1   },
     { 1024,  64000, 1, SQLCIPHER_KDF_ALGORITHM_SHA1,   SQLCIPHER_HMAC_ALGORITHM_SHA1   },
     { 4096, 256000, 1, SQLCIPHER_KDF_ALGORITHM_SHA512, SQLCIPHER_HMAC_ALGORITHM_SHA512 }
