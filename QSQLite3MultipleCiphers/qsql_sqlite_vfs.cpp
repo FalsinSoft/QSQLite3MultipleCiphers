@@ -121,14 +121,14 @@ int xOpen(sqlite3_vfs *svfs, sqlite3_filename zName, sqlite3_file *sfile,
     auto vfs = static_cast<Vfs *>(svfs);
     auto file = static_cast<File *>(sfile);
     memset(file, 0, sizeof(File));
-    QIODeviceBase::OpenMode mode = QIODeviceBase::NotOpen;
+    QIODevice::OpenMode mode = QIODevice::NotOpen;
     if (!zName || (flags & SQLITE_OPEN_MEMORY))
         return SQLITE_PERM;
     if ((flags & SQLITE_OPEN_READONLY) &&
         !(flags & SQLITE_OPEN_READWRITE) &&
         !(flags & SQLITE_OPEN_CREATE) &&
         !(flags & SQLITE_OPEN_DELETEONCLOSE)) {
-        mode |= QIODeviceBase::OpenModeFlag::ReadOnly;
+        mode |= QIODevice::OpenModeFlag::ReadOnly;
     } else {
         /*
             ** ^The [SQLITE_OPEN_EXCLUSIVE] flag is always used in conjunction
@@ -141,10 +141,10 @@ int xOpen(sqlite3_vfs *svfs, sqlite3_filename zName, sqlite3_file *sfile,
             ** for exclusive access.
          */
         if ((flags & SQLITE_OPEN_CREATE) && (flags & SQLITE_OPEN_EXCLUSIVE))
-            mode |= QIODeviceBase::OpenModeFlag::NewOnly;
+            mode |= QIODevice::OpenModeFlag::NewOnly;
 
         if (flags & SQLITE_OPEN_READWRITE)
-            mode |= QIODeviceBase::OpenModeFlag::ReadWrite;
+            mode |= QIODevice::OpenModeFlag::ReadWrite;
     }
 
     file->pMethods = &vfs->ioMethods;

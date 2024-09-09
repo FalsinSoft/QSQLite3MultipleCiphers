@@ -1,8 +1,10 @@
 #include "qsql_sqlite_multiple_ciphers_p.h"
 #include <qvariant.h>
 #include <sqlite3mc.h>
+#include <QDebug>
 
 Q_DECLARE_OPAQUE_POINTER(sqlite3*)
+Q_DECLARE_METATYPE(sqlite3*)
 
 QT_BEGIN_NAMESPACE
 
@@ -28,7 +30,8 @@ bool QSQLite3MultipleCiphersDriver::open(const QString &db, const QString &user,
     QString key, updateKey, removeKey, cipher;
     QStringList configs;
 
-    for(auto option = options.constBegin(); option != options.constEnd();)
+    //for(auto option = options.constBegin(); option != options.constEnd();)
+    for(auto option = options.begin(); option != options.end();)
     {
         QString config;
 
@@ -49,6 +52,7 @@ bool QSQLite3MultipleCiphersDriver::open(const QString &db, const QString &user,
     if(QSQLiteDriver::open(db, user, password, host, port, options.join(QLatin1Char(';'))))
     {
         const auto handle = qvariant_cast<sqlite3*>(QSQLiteDriver::handle());
+        
         CipherConfigs cipherConfigs;
 
         if(!cipher.isEmpty())
