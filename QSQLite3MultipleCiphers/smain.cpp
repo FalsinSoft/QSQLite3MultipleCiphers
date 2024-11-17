@@ -8,6 +8,8 @@
 
 QT_BEGIN_NAMESPACE
 
+using namespace Qt::StringLiterals;
+
 class QSQLite3MultipleCiphersDriverPlugin : public QSqlDriverPlugin
 {
     Q_OBJECT
@@ -27,7 +29,7 @@ QSQLite3MultipleCiphersDriverPlugin::QSQLite3MultipleCiphersDriverPlugin()
 
 QSqlDriver* QSQLite3MultipleCiphersDriverPlugin::create(const QString &name)
 {
-    if(name == QLatin1String("SQLITE_MULTIPLE_CIPHERS"))
+    if(name == "SQLITE_MULTIPLE_CIPHERS"_L1)
     {
         QSQLite3MultipleCiphersDriver *driver = new QSQLite3MultipleCiphersDriver();
         return driver;
