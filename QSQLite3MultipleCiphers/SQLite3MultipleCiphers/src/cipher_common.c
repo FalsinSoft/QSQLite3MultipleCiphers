@@ -116,20 +116,21 @@ sqlite3mcCloneCodecParameterTable()
 }
 
 SQLITE_PRIVATE void
-sqlite3mcFreeCodecParameterTable(CodecParameter* codecParams)
+sqlite3mcFreeCodecParameterTable(void* ptr)
 {
+  CodecParameter* codecParams = (CodecParameter*)ptr;
   sqlite3_free(codecParams[0].m_params);
   sqlite3_free(codecParams);
 }
 
 static const CipherDescriptor mcSentinelDescriptor =
 {
-  "", NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
+  "", NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
 };
 
 static const CipherDescriptor mcDummyDescriptor =
 {
-  "@dummy@", NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
+  "@dummy@", NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
 };
 
 static CipherDescriptor globalCodecDescriptorTable[CODEC_COUNT_MAX + 1];

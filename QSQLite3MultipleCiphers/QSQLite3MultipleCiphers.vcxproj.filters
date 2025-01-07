@@ -69,9 +69,6 @@
     <ClInclude Include="SQLite3MultipleCiphers\src\sqlite3mc_vfs.h">
       <Filter>Header Files\SQLite3MultipleCiphers</Filter>
     </ClInclude>
-    <ClInclude Include="SQLite3MultipleCiphers\src\sqlite3userauth.h">
-      <Filter>Header Files\SQLite3MultipleCiphers</Filter>
-    </ClInclude>
     <ClInclude Include="SQLite3MultipleCiphers\src\zlibwrap.h">
       <Filter>Header Files\SQLite3MultipleCiphers</Filter>
     </ClInclude>
