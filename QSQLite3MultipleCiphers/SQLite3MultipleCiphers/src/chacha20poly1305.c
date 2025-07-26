@@ -383,21 +383,23 @@ fail:
 }
 
 #if defined(__APPLE__)
-#include <AvailabilityMacros.h>
-#if MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
-#include <Security/SecRandom.h>
-#endif
+  #if defined(__clang__) || defined(__GNUC__)
+    #if __has_include(<CommonCrypto/CommonRandom.h>)
+      #include <CommonCrypto/CommonRandom.h>
+      #define HAVE_COMMONCRYPTO_COMMONRANDOM_H 1
+    #endif
+  #endif
 #endif
 
 static size_t entropy(void* buf, size_t n)
 {
-#if defined(__APPLE__) && MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
-  if (SecRandomCopyBytes(kSecRandomDefault, n, (uint8_t*) buf) == 0)
+#if defined(__APPLE__) && defined(HAVE_COMMONCRYPTO_COMMONRANDOM_H)
+  if (CCRandomGenerateBytes(buf, n) == kCCSuccess)
     return n;
 #elif defined(__linux__) && defined(SYS_getrandom)
   if (syscall(SYS_getrandom, buf, n, 0) == n)
     return n;
-#elif defined(SYS_getentropy)
+#elif defined(__linux__) && defined(SYS_getentropy)
   if (syscall(SYS_getentropy, buf, n) == 0)
     return n;
 #endif

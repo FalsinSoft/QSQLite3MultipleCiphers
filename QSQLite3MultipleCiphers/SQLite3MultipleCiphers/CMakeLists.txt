@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24.0.0)
-project(sqlite3mc VERSION 2.1.3)
+project(sqlite3mc VERSION 2.2.3)
 
 # Helper macro
 macro(_Enable_MT _target)
@@ -255,9 +255,6 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux"
     dl
     m
   )
-  if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    list(APPEND SQLITE3MC_LINK_LIBRARIES "-framework Security")
-  endif()
   set(SHARED_LIB_EXPORT_DEFINITION "__attribute__((visibility(\"default\")))")
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Android")
   if (ANDROID_ABI STREQUAL "arm64-v8a")

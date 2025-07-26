@@ -115,10 +115,11 @@ SQLITE_PRIVATE const AegisCryptFunctions mcAegisCryptFunctions[] =
 
 SQLITE_PRIVATE CipherParams mcAegisParams[] =
 {
-  { "tcost",     AEGIS_TCOST_DEFAULT,     AEGIS_TCOST_DEFAULT,     1,                   0x7fffffff },
-  { "mcost",     AEGIS_MCOST_DEFAULT,     AEGIS_MCOST_DEFAULT,     1,                   0x7fffffff },
-  { "pcost",     AEGIS_PCOST_DEFAULT,     AEGIS_PCOST_DEFAULT,     1,                   0x7fffffff },
-  { "algorithm", AEGIS_ALGORITHM_DEFAULT, AEGIS_ALGORITHM_DEFAULT, AEGIS_ALGORITHM_MIN, AEGIS_ALGORITHM_MAX },
+  { "tcost",                 AEGIS_TCOST_DEFAULT,     AEGIS_TCOST_DEFAULT,     1,                   0x7fffffff },
+  { "mcost",                 AEGIS_MCOST_DEFAULT,     AEGIS_MCOST_DEFAULT,     1,                   0x7fffffff },
+  { "pcost",                 AEGIS_PCOST_DEFAULT,     AEGIS_PCOST_DEFAULT,     1,                   0x7fffffff },
+  { "algorithm",             AEGIS_ALGORITHM_DEFAULT, AEGIS_ALGORITHM_DEFAULT, AEGIS_ALGORITHM_MIN, AEGIS_ALGORITHM_MAX },
+  { "plaintext_header_size", 0,                       0,                       0, 100 /* restrict to db header size */ },
   CIPHER_PARAMS_SENTINEL
 };
 
@@ -151,6 +152,7 @@ typedef struct _aegisCipher
   int     m_argon2Mcost;
   int     m_argon2Pcost;
   int     m_aegisAlgorithm;
+  int     m_plaintextHeaderSize;
   int     m_keyLength;
   int     m_nonceLength;
   uint8_t m_key[KEYLENGTH_AEGIS_MAX];
@@ -185,6 +187,7 @@ AllocateAegisCipher(sqlite3* db)
       aegisCipher->m_keyLength = KEYLENGTH_AEGIS_256;
       aegisCipher->m_nonceLength = PAGE_NONCE_LEN_AEGIS_256;
     }
+    aegisCipher->m_plaintextHeaderSize = sqlite3mcGetCipherParameter(cipherParams, "plaintext_header_size");
   }
   return aegisCipher;
 }
@@ -208,6 +211,7 @@ CloneAegisCipher(void* cipherTo, void* cipherFrom)
   aegisCipherTo->m_argon2Pcost = aegisCipherFrom->m_argon2Pcost;
 
   aegisCipherTo->m_aegisAlgorithm = aegisCipherFrom->m_aegisAlgorithm;
+  aegisCipherTo->m_plaintextHeaderSize = aegisCipherFrom->m_plaintextHeaderSize;
   aegisCipherTo->m_keyLength = aegisCipherFrom->m_keyLength;
   aegisCipherTo->m_nonceLength = aegisCipherFrom->m_nonceLength;
 
@@ -248,7 +252,6 @@ static void
 GenerateKeyAegisCipher(void* cipher, char* userPassword, int passwordLength, int rekey, unsigned char* cipherSalt)
 {
   AegisCipher* aegisCipher = (AegisCipher*) cipher;
-  int bypass = 0;
 
   int keyOnly = 1;
   if (rekey || cipherSalt == NULL)
@@ -261,51 +264,10 @@ GenerateKeyAegisCipher(void* cipher, char* userPassword, int passwordLength, int
     memcpy(aegisCipher->m_salt, cipherSalt, SALTLENGTH_AEGIS);
   }
 
-  /* Bypass key derivation if the key string starts with "raw:" */
-  if (passwordLength > 4 && !memcmp(userPassword, "raw:", 4))
-  {
-    const int nRaw = passwordLength - 4;
-    const unsigned char* zRaw = (const unsigned char*) userPassword + 4;
-    if (nRaw == aegisCipher->m_keyLength)
-    {
-      /* Binary key */
-      memcpy(aegisCipher->m_key, zRaw, aegisCipher->m_keyLength);
-      bypass = 1;
-    }
-    else if (nRaw == aegisCipher->m_keyLength + SALTLENGTH_AEGIS)
-    {
-      /* Binary key and salt) */
-      if (!keyOnly)
-      {
-        memcpy(aegisCipher->m_salt, zRaw + aegisCipher->m_keyLength, SALTLENGTH_AEGIS);
-      }
-      memcpy(aegisCipher->m_key, zRaw, aegisCipher->m_keyLength);
-      bypass = 1;
-    }
-    else if (nRaw == 2 * aegisCipher->m_keyLength)
-    {
-      /* Hex-encoded key */
-      if (sqlite3mcIsHexKey(zRaw, nRaw) != 0)
-      {
-        sqlite3mcConvertHex2Bin(zRaw, nRaw, aegisCipher->m_key);
-        bypass = 1;
-      }
-    }
-    else if (nRaw == 2 * (aegisCipher->m_keyLength + SALTLENGTH_AEGIS))
-    {
-      /* Hex-encoded key and salt */
-      if (sqlite3mcIsHexKey(zRaw, nRaw) != 0)
-      {
-        sqlite3mcConvertHex2Bin(zRaw, 2 * aegisCipher->m_keyLength, aegisCipher->m_key);
-        if (!keyOnly)
-        {
-          sqlite3mcConvertHex2Bin(zRaw + 2 * aegisCipher->m_keyLength, 2 * SALTLENGTH_AEGIS, aegisCipher->m_salt);
-        }
-        bypass = 1;
-      }
-    }
-  }
-
+  /* Bypass key derivation, if raw key (and optionally salt) are given */
+  int bypass = sqlite3mcExtractRawKey(userPassword, passwordLength,
+                                      keyOnly, aegisCipher->m_keyLength, SALTLENGTH_AEGIS,
+                                      aegisCipher->m_key, aegisCipher->m_salt);
   if (!bypass)
   {
     int rc = argon2id_hash_raw((uint32_t) aegisCipher->m_argon2Tcost,
@@ -347,11 +309,27 @@ EncryptPageAegisCipher(void* cipher, int page, unsigned char* data, int len, int
   int nReserved = (reserved == 0) ? 0 : GetReservedAegisCipher(cipher);
   int n = len - nReserved;
   uint64_t mlen = n;
+  int usePlaintextHeader = 0;
 
   /* Generate one-time keys */
   uint8_t otk[OTK_LEN_MAX_AEGIS];
-  int offset;
+  int offset = 0;
   memset(otk, 0, OTK_LEN_MAX_AEGIS);
+
+  /* Check whether a plaintext header should be used */
+  if (page == 1)
+  {
+    int plaintextHeaderSize = aegisCipher->m_plaintextHeaderSize;
+    if (plaintextHeaderSize > 0)
+    {
+      usePlaintextHeader = 1;
+      offset = (plaintextHeaderSize > CIPHER_PAGE1_OFFSET) ? plaintextHeaderSize : CIPHER_PAGE1_OFFSET;
+    }
+    else
+    {
+      offset = CIPHER_PAGE1_OFFSET;
+    }
+  }
 
   /* Check whether number of required reserved bytes and actually reserved bytes match */
   if (nReserved > reserved)
@@ -368,13 +346,12 @@ EncryptPageAegisCipher(void* cipher, int page, unsigned char* data, int len, int
     AegisGenOtk(aegisCipher, otk, aegisCipher->m_keyLength + aegisCipher->m_nonceLength,
                 data + n + PAGE_TAG_LEN_AEGIS, aegisCipher->m_nonceLength, page);
 
-    offset = (page == 1) ? CIPHER_PAGE1_OFFSET : 0;
     mcAegisCryptFunctions[aegisCipher->m_aegisAlgorithm].encrypt(
       data + offset, data + n, PAGE_TAG_LEN_AEGIS,
       data + offset, mlen - offset, 
       NULL, 0, otk + aegisCipher->m_keyLength, otk);
     
-    if (page == 1)
+    if (page == 1 && usePlaintextHeader == 0)
     {
       memcpy(data, aegisCipher->m_salt, SALTLENGTH_AEGIS);
     }
@@ -388,13 +365,12 @@ EncryptPageAegisCipher(void* cipher, int page, unsigned char* data, int len, int
                 nonce, aegisCipher->m_nonceLength, page);
 
     /* Encrypt */
-    offset = (page == 1) ? CIPHER_PAGE1_OFFSET : 0;
     mcAegisCryptFunctions[aegisCipher->m_aegisAlgorithm].encryptNoTag(
       data + offset, 
       data + offset, mlen - offset,
       otk + aegisCipher->m_keyLength, otk);
 
-    if (page == 1)
+    if (page == 1 && usePlaintextHeader == 0)
     {
       memcpy(data, aegisCipher->m_salt, SALTLENGTH_AEGIS);
     }
@@ -412,11 +388,27 @@ DecryptPageAegisCipher(void* cipher, int page, unsigned char* data, int len, int
   int n = len - nReserved;
   uint64_t clen = n;
   int tagOk;
+  int usePlaintextHeader = 0;
 
   /* Generate one-time keys */
   uint8_t otk[OTK_LEN_MAX_AEGIS];
-  int offset;
+  int offset = 0;
   memset(otk, 0, OTK_LEN_MAX_AEGIS);
+
+  /* Check whether a plaintext header should be used */
+  if (page == 1)
+  {
+    int plaintextHeaderSize = aegisCipher->m_plaintextHeaderSize;
+    if (plaintextHeaderSize > 0)
+    {
+      usePlaintextHeader = 1;
+      offset = (plaintextHeaderSize > CIPHER_PAGE1_OFFSET) ? plaintextHeaderSize : CIPHER_PAGE1_OFFSET;
+    }
+    else
+    {
+      offset = CIPHER_PAGE1_OFFSET;
+    }
+  }
 
   /* Check whether number of required reserved bytes and actually reserved bytes match */
   if (nReserved > reserved)
@@ -431,8 +423,6 @@ DecryptPageAegisCipher(void* cipher, int page, unsigned char* data, int len, int
                 data + n + PAGE_TAG_LEN_AEGIS, aegisCipher->m_nonceLength, page);
 
     /* Determine MAC and decrypt */
-    offset = (page == 1) ? CIPHER_PAGE1_OFFSET : 0;
-
     if (hmacCheck != 0)
     {
       /* Verify the MAC */
@@ -461,7 +451,7 @@ DecryptPageAegisCipher(void* cipher, int page, unsigned char* data, int len, int
         otk + aegisCipher->m_keyLength, otk);
     }
 
-    if (page == 1 && rc == SQLITE_OK)
+    if (page == 1 && usePlaintextHeader == 0 && rc == SQLITE_OK)
     {
       memcpy(data, SQLITE_FILE_HEADER, 16);
     }
@@ -475,13 +465,12 @@ DecryptPageAegisCipher(void* cipher, int page, unsigned char* data, int len, int
                 nonce, aegisCipher->m_nonceLength, page);
 
     /* Decrypt */
-    offset = (page == 1) ? CIPHER_PAGE1_OFFSET : 0;
     mcAegisCryptFunctions[aegisCipher->m_aegisAlgorithm].decryptNoTag(
       data + offset,
       data + offset, clen - offset,
       otk + aegisCipher->m_keyLength, otk);
 
-    if (page == 1)
+    if (page == 1 && usePlaintextHeader == 0)
     {
       memcpy(data, SQLITE_FILE_HEADER, 16);
     }

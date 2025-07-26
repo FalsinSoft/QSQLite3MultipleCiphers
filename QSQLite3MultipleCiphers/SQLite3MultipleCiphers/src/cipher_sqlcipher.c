@@ -142,8 +142,7 @@ AllocateSQLCipherCipher(sqlite3* db)
     sqlCipherCipher->m_hmacAlgorithmCompat = sqlite3mcGetCipherParameter(cipherParams, "hmac_algorithm_compat");
     if (sqlCipherCipher->m_legacy >= SQLCIPHER_VERSION_4)
     {
-      int plaintextHeaderSize = sqlite3mcGetCipherParameter(cipherParams, "plaintext_header_size");
-      sqlCipherCipher->m_plaintextHeaderSize = (plaintextHeaderSize >=0 && plaintextHeaderSize <= 100 && plaintextHeaderSize % 16 == 0) ? plaintextHeaderSize : 0;
+      sqlCipherCipher->m_plaintextHeaderSize = sqlite3mcGetCipherParameter(cipherParams, "plaintext_header_size");
     }
     else
     {
@@ -244,29 +243,22 @@ GenerateKeySQLCipherCipher(void* cipher, char* userPassword, int passwordLength,
 {
   SQLCipherCipher* sqlCipherCipher = (SQLCipherCipher*) cipher;
 
+  int keyOnly = 1;
   if (rekey || cipherSalt == NULL)
   {
     chacha20_rng(sqlCipherCipher->m_salt, SALTLENGTH_SQLCIPHER);
+    keyOnly = 0;
   }
   else
   {
     memcpy(sqlCipherCipher->m_salt, cipherSalt, SALTLENGTH_SQLCIPHER);
   }
 
-  if (passwordLength == ((KEYLENGTH_SQLCIPHER * 2) + 3) &&
-      sqlite3_strnicmp(userPassword, "x'", 2) == 0 &&
-    sqlite3mcIsHexKey((unsigned char*) (userPassword + 2), KEYLENGTH_SQLCIPHER * 2) != 0)
-  {
-    sqlite3mcConvertHex2Bin((unsigned char*) (userPassword + 2), passwordLength - 3, sqlCipherCipher->m_key);
-  }
-  else if (passwordLength == (((KEYLENGTH_SQLCIPHER + SALTLENGTH_SQLCIPHER) * 2) + 3) &&
-           sqlite3_strnicmp(userPassword, "x'", 2) == 0 &&
-           sqlite3mcIsHexKey((unsigned char*) (userPassword + 2), (KEYLENGTH_SQLCIPHER + SALTLENGTH_SQLCIPHER) * 2) != 0)
-  {
-    sqlite3mcConvertHex2Bin((unsigned char*) (userPassword + 2), KEYLENGTH_SQLCIPHER * 2, sqlCipherCipher->m_key);
-    sqlite3mcConvertHex2Bin((unsigned char*) (userPassword + 2 + KEYLENGTH_SQLCIPHER * 2), SALTLENGTH_SQLCIPHER * 2, sqlCipherCipher->m_salt);
-  }
-  else
+  /* Bypass key derivation, if raw key (and optionally salt) are given */
+  int bypass = sqlite3mcExtractRawKey(userPassword, passwordLength,
+                                      keyOnly, KEYLENGTH_SQLCIPHER, SALTLENGTH_SQLCIPHER,
+                                      sqlCipherCipher->m_key, sqlCipherCipher->m_salt);
+  if (!bypass)
   {
     switch (sqlCipherCipher->m_kdfAlgorithm)
     {
@@ -356,16 +348,24 @@ EncryptPageSQLCipherCipher(void* cipher, int page, unsigned char* data, int len,
   int legacy = sqlCipherCipher->m_legacy;
   int nReserved = (reserved == 0 && legacy == 0) ? 0 : GetReservedSQLCipherCipher(cipher);
   int n = len - nReserved;
-  int offset = (page == 1) ? (sqlCipherCipher->m_legacy != 0) ? 16 : 24 : 0;
+  int offset = 0;
   int blen;
   unsigned char iv[128];
   int usePlaintextHeader = 0;
 
   /* Check whether a plaintext header should be used */
-  if (page == 1 && sqlCipherCipher->m_legacy >= SQLCIPHER_VERSION_4 && sqlCipherCipher->m_plaintextHeaderSize > 0)
+  if (page == 1)
   {
-    usePlaintextHeader = 1;
-    offset = sqlCipherCipher->m_plaintextHeaderSize;
+    int plaintextHeaderSize = sqlCipherCipher->m_plaintextHeaderSize;
+    offset = (sqlCipherCipher->m_legacy != 0) ? 16 : 24;
+    if (plaintextHeaderSize > 0)
+    {
+      usePlaintextHeader = 1;
+      if (sqlCipherCipher->m_legacy >= SQLCIPHER_VERSION_4)
+      {
+        offset = plaintextHeaderSize;
+      }
+    }
   }
 
   /* Check whether number of required reserved bytes and actually reserved bytes match */
@@ -430,17 +430,25 @@ DecryptPageSQLCipherCipher(void* cipher, int page, unsigned char* data, int len,
   int legacy = sqlCipherCipher->m_legacy;
   int nReserved = (reserved == 0 && legacy == 0) ? 0 : GetReservedSQLCipherCipher(cipher);
   int n = len - nReserved;
-  int offset = (page == 1) ? (sqlCipherCipher->m_legacy != 0) ? 16 : 24 : 0;
+  int offset = 0;
   int hmacOk = 1;
   int blen;
   unsigned char iv[128];
   int usePlaintextHeader = 0;
 
   /* Check whether a plaintext header should be used */
-  if (page == 1 && sqlCipherCipher->m_legacy >= SQLCIPHER_VERSION_4 && sqlCipherCipher->m_plaintextHeaderSize > 0)
+  if (page == 1)
   {
-    usePlaintextHeader = 1;
-    offset = sqlCipherCipher->m_plaintextHeaderSize;
+    int plaintextHeaderSize = sqlCipherCipher->m_plaintextHeaderSize;
+    offset = (sqlCipherCipher->m_legacy != 0) ? 16 : 24;
+    if (plaintextHeaderSize > 0)
+    {
+      usePlaintextHeader = 1;
+      if (sqlCipherCipher->m_legacy >= SQLCIPHER_VERSION_4)
+      {
+        offset = plaintextHeaderSize;
+      }
+    }
   }
 
   /* Check whether number of required reserved bytes and actually reserved bytes match */
