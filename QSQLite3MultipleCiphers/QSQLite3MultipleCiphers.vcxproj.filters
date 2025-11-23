@@ -72,6 +72,9 @@
     <ClInclude Include="SQLite3MultipleCiphers\src\zlibwrap.h">
       <Filter>Header Files\SQLite3MultipleCiphers</Filter>
     </ClInclude>
+    <ClInclude Include="SQLite3MultipleCiphers\src\windirent.h">
+      <Filter>Header Files\SQLite3MultipleCiphers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="qsql_sqlite_p.h">

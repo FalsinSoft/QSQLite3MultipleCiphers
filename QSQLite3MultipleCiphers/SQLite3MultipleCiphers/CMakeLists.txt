@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24.0.0)
-project(sqlite3mc VERSION 2.2.3)
+project(sqlite3mc VERSION 2.2.5)
 
 # Helper macro
 macro(_Enable_MT _target)
@@ -29,6 +29,7 @@ OPTION(SQLITE_ENABLE_CSV "Enable extension 'csv'" ON)
 OPTION(SQLITE_ENABLE_EXTFUNC "Enable extension 'extfunc'" ON)
 OPTION(SQLITE_ENABLE_GEOPOLY "Enable extension 'geopoly'" ON)
 OPTION(SQLITE_ENABLE_JSON1 "Enable extension 'json1'" ON)
+OPTION(SQLITE_ENABLE_PERCENTILE "Enable extension 'percentile'" ON)
 OPTION(SQLITE_ENABLE_RTREE "Enable extension 'rtree'" ON)
 OPTION(SQLITE_ENABLE_UUID "Enable extension 'uuid'" ON)
 OPTION(SQLITE_USE_URI "Enable the URI filename process logic" ON)
@@ -107,6 +108,7 @@ set(SQLITE3MC_BASE_DEFINITIONS
   $<$<BOOL:${SQLITE_ENABLE_GEOPOLY}>:SQLITE_ENABLE_GEOPOLY=1>
   $<$<BOOL:${SQLITE_ENABLE_EXTFUNC}>:SQLITE_ENABLE_EXTFUNC=1>
   $<$<BOOL:${SQLITE_ENABLE_CARRAY}>:SQLITE_ENABLE_CARRAY=1>
+  $<$<BOOL:${SQLITE_ENABLE_PERCENTILE}>:SQLITE_ENABLE_PERCENTILE=1>
   $<$<BOOL:${SQLITE_ENABLE_UUID}>:SQLITE_ENABLE_UUID=1>
   SQLITE_TEMP_STORE=2
   $<$<BOOL:${SQLITE_USE_URI}>:SQLITE_USE_URI=1>
@@ -360,7 +362,7 @@ message("Will build ${SQLITE3MC_TARGET} as ${SQLITE3MC_LINK}")
 
 include(GNUInstallDirs)
 INSTALL(TARGETS ${SQLITE3MC_TARGET}
-  EXPORT ${SQLITE3MC_TARGET}Targets
+  EXPORT sqlite3mcTargets
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
@@ -368,25 +370,25 @@ INSTALL(TARGETS ${SQLITE3MC_TARGET}
   COMPONENT libraries
 )
 
-install(EXPORT ${SQLITE3MC_TARGET}Targets DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${SQLITE3MC_TARGET})
+install(EXPORT sqlite3mcTargets NAMESPACE sqlite3mc:: DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/sqlite3mc)
 
 # Create config for find_package()
 include(CMakePackageConfigHelpers)
-write_basic_package_version_file(${CMAKE_CURRENT_BINARY_DIR}/${SQLITE3MC_TARGET}ConfigVersion.cmake COMPATIBILITY SameMajorVersion)
+write_basic_package_version_file(${CMAKE_CURRENT_BINARY_DIR}/sqlite3mcConfigVersion.cmake COMPATIBILITY SameMajorVersion)
 set(SQLITE3MC_CONFIG_CONTENT "@PACKAGE_INIT@\n")
-string(APPEND SQLITE3MC_CONFIG_CONTENT "include(\"\${CMAKE_CURRENT_LIST_DIR}/${SQLITE3MC_TARGET}Targets.cmake\")")
-file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/${SQLITE3MC_TARGET}Config.cmake.in ${SQLITE3MC_CONFIG_CONTENT})
+string(APPEND SQLITE3MC_CONFIG_CONTENT "include(\"\${CMAKE_CURRENT_LIST_DIR}/sqlite3mcTargets.cmake\")")
+file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/sqlite3mcConfig.cmake.in ${SQLITE3MC_CONFIG_CONTENT})
 
 configure_package_config_file(
-  ${CMAKE_CURRENT_BINARY_DIR}/${SQLITE3MC_TARGET}Config.cmake.in
-  ${SQLITE3MC_TARGET}Config.cmake
-  INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${SQLITE3MC_TARGET}"
+  ${CMAKE_CURRENT_BINARY_DIR}/sqlite3mcConfig.cmake.in
+  sqlite3mcConfig.cmake
+  INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/sqlite3mc"
 )
 
 install(FILES
-  ${CMAKE_CURRENT_BINARY_DIR}/${SQLITE3MC_TARGET}ConfigVersion.cmake
-  ${CMAKE_CURRENT_BINARY_DIR}/${SQLITE3MC_TARGET}Config.cmake
-  DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${SQLITE3MC_TARGET}"
+  ${CMAKE_CURRENT_BINARY_DIR}/sqlite3mcConfigVersion.cmake
+  ${CMAKE_CURRENT_BINARY_DIR}/sqlite3mcConfig.cmake
+  DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/sqlite3mc"
 )
 
 # Shell Executable project

@@ -32,6 +32,7 @@
     <ClInclude Include="SQLite3MultipleCiphers\src\sqlite3mc_config.h" />
     <ClInclude Include="SQLite3MultipleCiphers\src\sqlite3mc_version.h" />
     <ClInclude Include="SQLite3MultipleCiphers\src\sqlite3mc_vfs.h" />
+    <ClInclude Include="SQLite3MultipleCiphers\src\windirent.h" />
     <ClInclude Include="SQLite3MultipleCiphers\src\zlibwrap.h" />
     <QtMoc Include="qsql_sqlite_multiple_ciphers_p.h" />
     <ClInclude Include="qsql_sqlite_vfs_p.h" />

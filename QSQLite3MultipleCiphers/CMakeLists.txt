@@ -6,7 +6,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Sql)
+find_package(Qt6 REQUIRED COMPONENTS CorePrivate SqlPrivate)
 
 qt_add_plugin(${PROJECT_NAME}
     SHARED
@@ -34,7 +34,6 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
-    Qt6::Core
     Qt6::CorePrivate
     Qt6::SqlPrivate
 )
