@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24.0.0)
-project(sqlite3mc VERSION 2.2.5)
+project(sqlite3mc VERSION 2.2.7)
 
 # Helper macro
 macro(_Enable_MT _target)
@@ -218,7 +218,7 @@ set(SQLITE3MC_BASE_SRCS
   src/rijndael.h
   src/sha1.h
   src/sha2.h
-  src/test_windirent.h
+  src/windirent.h
   ${SQLITE3MC_PUBLIC_HEADERS}
 )
 set(SQLITE3MC_DLLRES_SRCS
@@ -250,8 +250,6 @@ endif()
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux"
     OR CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -msse4.2 -maes")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse4.2 -maes")
   set(SQLITE3MC_LINK_LIBRARIES
     pthread
     dl
@@ -267,10 +265,6 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Android")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mvaes")
   endif()
 else()
-  if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -msse4.2 -maes")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse4.2 -maes")
-  endif()
   set(SHARED_LIB_EXPORT_DEFINITION "__declspec(dllexport)")
 endif()
 
