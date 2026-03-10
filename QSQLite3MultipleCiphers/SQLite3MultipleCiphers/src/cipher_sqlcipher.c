@@ -252,6 +252,8 @@ GenerateKeySQLCipherCipher(void* cipher, char* userPassword, int passwordLength,
   else
   {
     memcpy(sqlCipherCipher->m_salt, cipherSalt, SALTLENGTH_SQLCIPHER);
+    if (sqlCipherCipher->m_plaintextHeaderSize > 0)
+      keyOnly = 0;
   }
 
   /* Bypass key derivation, if raw key (and optionally salt) are given */

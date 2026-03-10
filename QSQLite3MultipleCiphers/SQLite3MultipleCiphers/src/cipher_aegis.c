@@ -262,6 +262,8 @@ GenerateKeyAegisCipher(void* cipher, char* userPassword, int passwordLength, int
   else
   {
     memcpy(aegisCipher->m_salt, cipherSalt, SALTLENGTH_AEGIS);
+    if (aegisCipher->m_plaintextHeaderSize > 0)
+      keyOnly = 0;
   }
 
   /* Bypass key derivation, if raw key (and optionally salt) are given */

@@ -131,6 +131,8 @@ GenerateKeyAscon128Cipher(void* cipher, char* userPassword, int passwordLength, 
   else
   {
     memcpy(ascon128Cipher->m_salt, cipherSalt, SALTLENGTH_ASCON128);
+    if (ascon128Cipher->m_plaintextHeaderSize > 0)
+      keyOnly = 0;
   }
 
   /* Bypass key derivation, if raw key (and optionally salt) are given */

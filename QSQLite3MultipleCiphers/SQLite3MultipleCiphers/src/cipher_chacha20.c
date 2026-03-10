@@ -157,6 +157,8 @@ GenerateKeyChaCha20Cipher(void* cipher, char* userPassword, int passwordLength, 
   else
   {
     memcpy(chacha20Cipher->m_salt, cipherSalt, SALTLENGTH_CHACHA20);
+    if (chacha20Cipher->m_plaintextHeaderSize > 0)
+      keyOnly = 0;
   }
 
   /* Bypass key derivation, if raw key (and optionally salt) are given */
