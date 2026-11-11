@@ -3,9 +3,41 @@
 ** Purpose:     Amalgamation of the SQLite3 Multiple Ciphers encryption extension for SQLite
 ** Author:      Ulrich Telle
 ** Created:     2020-02-28
-** Copyright:   (c) 2006-2025 Ulrich Telle
+** Copyright:   (c) 2006-2026 Ulrich Telle
 ** License:     MIT
 */
+
+/*
+** Keep temporary data in memory by default
+**
+** Temporary files (for example temporary tables, sort data and transient
+** databases) are not encrypted. The default applies only if SQLITE_TEMP_STORE
+** is not defined. Possible values:
+**   0 = always use temporary files
+**   1 = use temporary files, unless PRAGMA temp_store=MEMORY (SQLite's default)
+**   2 = use memory, unless PRAGMA temp_store=FILE
+**   3 = always use memory
+*/
+#ifndef SQLITE_TEMP_STORE
+#define SQLITE_TEMP_STORE 2
+#endif
+
+/*
+** If SQLite functions should be called through a dispatch table,
+** thus hiding all SQLite function symbols from the linker,
+** define the symbol SQLITE3MC_USE_DISPATCH_TABLE.
+*/
+
+#ifdef SQLITE3MC_USE_DISPATCH_TABLE
+#ifdef SQLITE_API
+#undef SQLITE_API
+#endif
+#ifdef SQLITE_PRIVATE
+#undef SQLITE_PRIVATE
+#endif
+#define SQLITE_API static
+#define SQLITE_PRIVATE static
+#endif
 
 /*
 ** Force some options required for WASM builds
@@ -163,14 +195,16 @@ SQLITE_PRIVATE int sqlite3mcGetMemorySecurity();
 #endif
 
 /*
+** Check for hardware features
+*/
+#include "hwcheck.c"
+
+/*
 ** Crypto algorithms
 */
 #include "md5.c"
 #include "sha1.c"
 #include "sha2.c"
-
-#if HAVE_CIPHER_CHACHA20 || HAVE_CIPHER_SQLCIPHER || HAVE_CIPHER_ASCON128 || HAVE_CIPHER_AEGIS
-#include "fastpbkdf2.c"
 
 /* Prototypes for several crypto functions to make pedantic compilers happy */
 SQLITE_PRIVATE void chacha20_xor(void* data, size_t n, const uint8_t key[32], const uint8_t nonce[12], uint32_t counter);
@@ -178,6 +212,15 @@ SQLITE_PRIVATE void poly1305(const uint8_t* msg, size_t n, const uint8_t key[32]
 SQLITE_PRIVATE int poly1305_tagcmp(const uint8_t tag1[16], const uint8_t tag2[16]);
 SQLITE_PRIVATE void chacha20_rng(void* out, size_t n);
 
+SQLITE_PRIVATE void sqlite3mcSecureZeroMemory(void* v, size_t n);
+
+/* Hardware accelerated implementation of chacha20-poly1305 */
+#include "chacha20/libchacha20.c"
+
+#if HAVE_CIPHER_CHACHA20 || HAVE_CIPHER_SQLCIPHER || HAVE_CIPHER_ASCON128 || HAVE_CIPHER_AEGIS
+#include "fastpbkdf2.c"
+
+#include "csprng_entropy.c"
 #include "chacha20poly1305.c"
 #endif
 
@@ -229,6 +272,7 @@ mcRegisterCodecExtensions(sqlite3* db, char** pzErrMsg, const sqlite3_api_routin
 */
 #ifdef SQLITE_ENABLE_EXTFUNC
 /* Prototype for initialization function of EXTENSIONFUNCTIONS extension */
+SQLITE_API
 int RegisterExtensionFunctions(sqlite3* db);
 #include "extensionfunctions.c"
 #endif
@@ -350,6 +394,16 @@ int sqlite3_zipfile_init(sqlite3 *db, char **pzErrMsg, const sqlite3_api_routine
 #endif
 
 /*
+** VLE - Value Level Encryption
+*/
+
+#ifdef SQLITE3MC_ENABLE_VLE
+SQLITE_API
+int sqlite3_vle_init(sqlite3* db, char** pzErrMsg, const sqlite3_api_routines* pApi);
+#include "sqlite3mc_vle.c"
+#endif
+
+/*
 ** Multi cipher VFS
 */
 #include "sqlite3mc_vfs.c"
@@ -372,7 +426,12 @@ mcRegisterCodecExtensions(sqlite3* db, char** pzErrMsg, const sqlite3_api_routin
   rc = (codecParameterTable != NULL) ? SQLITE_OK : SQLITE_NOMEM;
   if (rc == SQLITE_OK)
   {
-    sqlite3_set_clientdata(db, globalConfigTableName, codecParameterTable, sqlite3mcFreeCodecParameterTable);
+    rc = sqlite3_set_clientdata(db, globalConfigTableName, codecParameterTable, sqlite3mcFreeCodecParameterTable);
+    if (rc != SQLITE_OK)
+    {
+      /* sqlite3_set_clientdata failed with OOM */
+      codecParameterTable = NULL;
+    }
   }
 
   rc = (codecParameterTable != NULL) ? SQLITE_OK : SQLITE_NOMEM;
@@ -517,10 +576,35 @@ sqlite3mcRegisterCipher(const CipherDescriptor* desc, const CipherParams* params
   if (!cipherParams)
     return SQLITE_NOMEM;
 
+  /* Copy parameters */
+  {
+    int n;
+    for (n = 0; n < np; ++n)
+    {
+      char* paramName = (char*)sqlite3_malloc((int)strlen(params[n].m_name) + 1);
+      if (paramName == NULL)
+      {
+        /* Memory allocation for parameter names failed, clean up */
+        int k;
+        for (k = n - 1; k >= 0; --k)
+        {
+          sqlite3_free((char*)cipherParams[k].m_name);
+        }
+        sqlite3_free(cipherParams);
+        return SQLITE_NOMEM;
+      }
+      strcpy(paramName, params[n].m_name);
+      cipherParams[n] = params[n];
+      cipherParams[n].m_name = paramName;
+    }
+    /* Add sentinel */
+    cipherParams[n] = params[n];
+    cipherParams[n].m_name = globalSentinelName;
+  }
+
   /* Check for */
   if (globalCipherCount < CODEC_COUNT_MAX)
   {
-    int n;
     char* cipherName;
     ++globalCipherCount;
     cipherName = globalCipherNameTable[globalCipherCount].m_name;
@@ -532,18 +616,6 @@ sqlite3mcRegisterCipher(const CipherDescriptor* desc, const CipherParams* params
     globalCodecParameterTable[globalCipherCount].m_name = cipherName;
     globalCodecParameterTable[globalCipherCount].m_id = globalCipherCount;
     globalCodecParameterTable[globalCipherCount].m_params = cipherParams;
-
-    /* Copy parameters */
-    for (n = 0; n < np; ++n)
-    {
-      char* paramName = (char*) sqlite3_malloc((int)strlen(params[n].m_name) + 1);
-      strcpy(paramName, params[n].m_name);
-      cipherParams[n] = params[n];
-      cipherParams[n].m_name = paramName;
-    }
-    /* Add sentinel */
-    cipherParams[n] = params[n];
-    cipherParams[n].m_name = globalSentinelName;
 
     /* Make cipher default, if requested */
     if (makeDefault)
@@ -635,6 +707,8 @@ sqlite3mcTermCipherTables()
         sqlite3_free((char*) params[k].m_name);
       }
       sqlite3_free(globalCodecParameterTable[n].m_params);
+      globalCodecParameterTable[n].m_params = NULL;
+      globalCodecParameterTable[n].m_name[0] = 0;
     }
   }
   globalCipherCount = 0;
@@ -688,6 +762,12 @@ sqlite3mc_initialize(const char* arg)
   }
 #endif
 
+  if (rc != SQLITE_OK)
+  {
+    /* Initialization failed, clean up cipher tables */
+    sqlite3mcTermCipherTables();
+  }
+
   /*
   ** Initialize and register MultiCipher VFS as default VFS
   ** if it isn't already registered
@@ -699,6 +779,11 @@ sqlite3mc_initialize(const char* arg)
     {
       /* Add encryption VFS shim to default VFS */
       rc = sqlite3mc_vfs_create(NULL, 1);
+      if (rc != SQLITE_OK)
+      {
+        /* Registering MultiCipher VFS failed, clean up */
+        sqlite3mc_shutdown();
+      }
     }
   }
   return rc;
@@ -783,6 +868,12 @@ sqlite3mc_builtin_extensions(sqlite3* db)
     rc = sqlite3_zipfile_init(db, &errmsg, NULL);
   }
 #endif
+#ifdef SQLITE3MC_ENABLE_VLE
+  if (rc == SQLITE_OK)
+  {
+    rc = sqlite3_vle_init(db, &errmsg, NULL);
+  }
+#endif
   return rc;
 }
 
@@ -798,4 +889,111 @@ sqlite3mc_shutdown(void)
 */
 #ifdef SQLITE_ENABLE_TCL
 #include "tclsqlite.c"
+#endif
+
+#ifdef SQLITE3MC_USE_DISPATCH_TABLE
+
+/*
+** Dispatch table
+*/
+
+static const sqlite3mc_core_routines sqlite3mcCoreApis =
+{
+  sqlite3_initialize,
+  sqlite3_shutdown,
+  sqlite3_config,
+  sqlite3_enable_load_extension,
+#ifndef SQLITE_OMIT_DEPRECATED
+  sqlite3_memory_alarm,
+#else
+  0,
+#endif
+#ifndef NDEBUG
+  sqlite3_mutex_held,
+  sqlite3_mutex_notheld,
+#else
+  0,
+  0,
+#endif
+  sqlite3_os_init,
+  sqlite3_os_end,
+
+#ifdef SQLITE_ENABLE_PREUPDATE_HOOK
+  sqlite3_preupdate_blobwrite,
+  sqlite3_preupdate_count,
+  sqlite3_preupdate_depth,
+  sqlite3_preupdate_hook,
+  sqlite3_preupdate_new,
+  sqlite3_preupdate_old,
+#else
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+#endif
+#ifdef SQLITE_ENABLE_SNAPSHOT
+  sqlite3_snapshot_cmp,
+  sqlite3_snapshot_free,
+  sqlite3_snapshot_get,
+  sqlite3_snapshot_open,
+  sqlite3_snapshot_recover,
+#else
+  0,
+  0,
+  0,
+  0,
+  0,
+#endif
+#ifdef SQLITE_ENABLE_STMT_SCANSTATUS
+  sqlite3_stmt_scanstatus,
+  sqlite3_stmt_scanstatus_v2,
+  sqlite3_stmt_scanstatus_reset,
+#else
+  0,
+  0,
+  0,
+#endif
+#if SQLITE_OS_WIN == 1
+  sqlite3_win32_set_directory,
+  sqlite3_win32_set_directory16,
+  sqlite3_win32_set_directory8,
+#else
+  0,
+  0,
+  0,
+#endif
+};
+
+static const sqlite3mc_api_routines sqlite3mcApis =
+{
+  sqlite3_activate_see,
+  sqlite3_key,
+  sqlite3_key_v2,
+  sqlite3_rekey,
+  sqlite3_rekey_v2,
+
+  sqlite3mc_version,
+  sqlite3mc_cipher_count,
+  sqlite3mc_cipher_index,
+  sqlite3mc_cipher_name,
+  sqlite3mc_cipher_name_copy,
+  sqlite3mc_config,
+  sqlite3mc_config_cipher,
+  sqlite3mc_codec_data,
+
+  sqlite3mc_vfs_create,
+  sqlite3mc_vfs_destroy,
+  sqlite3mc_vfs_shutdown,
+};
+
+/*
+** Global pointers to the dispatch tables
+*/
+
+const sqlite3_api_routines*    SQLITE3MC_API_TABLE_EXT  = &sqlite3Apis;
+const sqlite3mc_core_routines* SQLITE3MC_API_TABLE_CORE = &sqlite3mcCoreApis;
+const sqlite3mc_api_routines*  SQLITE3MC_API_TABLE_MC   = &sqlite3mcApis;
+
 #endif

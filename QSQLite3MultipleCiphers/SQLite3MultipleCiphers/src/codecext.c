@@ -3,7 +3,7 @@
 ** Purpose:     Implementation of SQLite codec API
 ** Author:      Ulrich Telle
 ** Created:     2006-12-06
-** Copyright:   (c) 2006-2022 Ulrich Telle
+** Copyright:   (c) 2006-2026 Ulrich Telle
 ** License:     MIT
 */
 
@@ -35,6 +35,7 @@ sqlite3mcBtreeSetPageSize(Btree* p, int pageSize, int nReserve, int iFix)
   {
     assert((pageSize & 7) == 0);
     assert(!pBt->pCursor);
+    if( nReserve>32 && pageSize==512 ) pageSize = 1024;
     pBt->pageSize = (u32)pageSize;
     freeTempSpace(pBt);
   }
@@ -201,12 +202,12 @@ mcAdjustBtree(Btree* pBt, int nPageSize, int nReserved, int isLegacy)
     {
       pBt->pBt->btsFlags &= ~BTS_PAGESIZE_FIXED;
     }
-    rc = sqlite3BtreeSetPageSize(pBt, pagesize, reserved, 0);
+    rc = sqlite3mcBtreeSetPageSize(pBt, pagesize, reserved, 0);
   }
   return rc;
 }
 
-static int
+SQLITE_PRIVATE int
 sqlite3mcCodecAttach(sqlite3* db, int nDb, const char* zPath, const void* zKey, int nKey)
 {
   /* Attach a key to a database. */
@@ -401,6 +402,7 @@ sqlite3_rekey_v2(sqlite3* db, const char* zDbName, const void* zKey, int nKey)
   int nReserved;
   Pager* pPager;
   Codec* codec;
+  int usesWal = 0;
   int codecAllocated = 0;
   int rc = SQLITE_ERROR;
   char* err = NULL;
@@ -436,10 +438,11 @@ sqlite3_rekey_v2(sqlite3* db, const char* zDbName, const void* zKey, int nKey)
 
   pPager = sqlite3BtreePager(pBt);
   codec = sqlite3mcGetCodec(db, zDbName);
+  usesWal = pagerUseWal(pPager);
 
-  if (pagerUseWal(pPager))
+  if (usesWal && (zKey != NULL) && (nKey > 0) && (codec == NULL || !sqlite3mcIsEncrypted(codec)))
   {
-    sqlite3ErrorWithMsg(db, rc, "Rekeying is not supported in WAL journal mode.");
+    sqlite3ErrorWithMsg(db, rc, "Rekeying an unencrypted database is not supported in WAL journal mode.");
     return rc;
   }
 
@@ -464,7 +467,7 @@ sqlite3_rekey_v2(sqlite3* db, const char* zDbName, const void* zKey, int nKey)
     {
       sqlite3mcSetDb(codec, db);
       sqlite3mcSetBtree(codec, pBt);
-      rc = sqlite3mcSetupWriteCipher(codec, sqlite3mcGetCipherType(db), (char*) zKey, nKey);
+      rc = sqlite3mcSetupWriteCipher(codec, sqlite3mcGetCipherType(db), (char*) zKey, nKey, usesWal);
     }
     if (rc == SQLITE_OK)
     {
@@ -523,7 +526,7 @@ sqlite3_rekey_v2(sqlite3* db, const char* zDbName, const void* zKey, int nKey)
   {
     /* Database encrypted and key specified, therefore re-encrypt database with new key */
     /* Keep read key, change write key to new key */
-    rc = sqlite3mcSetupWriteCipher(codec, sqlite3mcGetCipherType(db), (char*) zKey, nKey);
+    rc = sqlite3mcSetupWriteCipher(codec, sqlite3mcGetCipherType(db), (char*) zKey, nKey, usesWal);
     if (rc == SQLITE_OK)
     {
       int nPagesizeWriteCipher = sqlite3mcGetPageSizeWriteCipher(codec);

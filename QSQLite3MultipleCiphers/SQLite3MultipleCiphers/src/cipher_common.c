@@ -3,7 +3,7 @@
 ** Purpose:     Implementation of SQLite codecs
 ** Author:      Ulrich Telle
 ** Created:     2020-02-02
-** Copyright:   (c) 2006-2024 Ulrich Telle
+** Copyright:   (c) 2006-2026 Ulrich Telle
 ** License:     MIT
 */
 
@@ -25,6 +25,7 @@ static CipherParams commonParams[] =
 {
   { "cipher",          CODEC_TYPE_UNKNOWN,   CODEC_TYPE_UNKNOWN, 1,      CODEC_COUNT_MAX },
   { "hmac_check",                       1,                    1, 0,                    1 },
+  { "encrypt_temp_db",                  0,                    0, 0,                    1 },
   { "mc_legacy_wal", SQLITE3MC_LEGACY_WAL, SQLITE3MC_LEGACY_WAL, 0,                    1 },
   CIPHER_PARAMS_SENTINEL
 };
@@ -84,7 +85,7 @@ sqlite3mcCloneCodecParameterTable()
   cloneCodecParams = (CodecParameter*) sqlite3_malloc((nTables + 1) * sizeof(CodecParameter));
 
   /* Create copy of tables */
-  if (cloneCodecParams != NULL)
+  if (cloneCodecParams != NULL && cloneCipherParams != NULL)
   {
     int offset = 0;
     for (j = 0; j < nTables; ++j)
@@ -111,7 +112,9 @@ sqlite3mcCloneCodecParameterTable()
   }
   else
   {
+    sqlite3_free(cloneCodecParams);
     sqlite3_free(cloneCipherParams);
+    cloneCodecParams = NULL;
   }
   return cloneCodecParams;
 }
@@ -233,7 +236,7 @@ sqlite3mcCodecTerm(Codec* codec)
     globalCodecDescriptorTable[codec->m_writeCipherType - 1].m_freeCipher(codec->m_writeCipher);
     codec->m_writeCipher = NULL;
   }
-  memset(codec, 0, sizeof(Codec));
+  sqlite3mcSecureZeroMemory(codec, sizeof(Codec));
 }
 
 SQLITE_PRIVATE void
@@ -273,7 +276,7 @@ sqlite3mcCodecSetup(Codec* codec, int cipherType, char* userPassword, int passwo
 }
 
 SQLITE_PRIVATE int
-sqlite3mcSetupWriteCipher(Codec* codec, int cipherType, char* userPassword, int passwordLength)
+sqlite3mcSetupWriteCipher(Codec* codec, int cipherType, char* userPassword, int passwordLength, int usesWal)
 {
   int rc = SQLITE_OK;
   CipherParams* globalParams = sqlite3mcGetCipherParams(codec->m_db, CIPHER_NAME_GLOBAL);
@@ -294,7 +297,7 @@ sqlite3mcSetupWriteCipher(Codec* codec, int cipherType, char* userPassword, int 
   if (codec->m_writeCipher != NULL)
   {
     unsigned char* keySalt = (codec->m_hasKeySalt != 0) ? codec->m_keySalt : NULL;
-    sqlite3mcGenerateWriteKey(codec, userPassword, passwordLength, keySalt);
+    sqlite3mcGenerateWriteKey(codec, userPassword, passwordLength, keySalt, usesWal);
   }
   else
   {
@@ -426,6 +429,10 @@ SQLITE_PRIVATE int
 sqlite3mcGetPageSizeReadCipher(Codec* codec)
 {
   int pageSize = (codec->m_hasReadCipher  && codec->m_readCipher != NULL) ? globalCodecDescriptorTable[codec->m_readCipherType - 1].m_getPageSize(codec->m_readCipher) : -1;
+  if (pageSize <= 0 && codec->m_btShared != NULL)
+  {
+    pageSize = codec->m_btShared->pageSize;
+  }
   return pageSize;
 }
 
@@ -433,6 +440,10 @@ SQLITE_PRIVATE int
 sqlite3mcGetPageSizeWriteCipher(Codec* codec)
 {
   int pageSize = (codec->m_hasWriteCipher && codec->m_writeCipher != NULL) ? globalCodecDescriptorTable[codec->m_writeCipherType - 1].m_getPageSize(codec->m_writeCipher) : -1;
+  if (pageSize <= 0 && codec->m_btShared != NULL)
+  {
+    pageSize = codec->m_btShared->pageSize;
+  }
   return pageSize;
 }
 
@@ -618,11 +629,11 @@ sqlite3mcGenerateReadKey(Codec* codec, char* userPassword, int passwordLength, u
 }
 
 SQLITE_PRIVATE void
-sqlite3mcGenerateWriteKey(Codec* codec, char* userPassword, int passwordLength, unsigned char* cipherSalt)
+sqlite3mcGenerateWriteKey(Codec* codec, char* userPassword, int passwordLength, unsigned char* cipherSalt, int usesWal)
 {
   unsigned char dbHeader[KEYSALT_LENGTH];
   unsigned char* pDbHeader = (cipherSalt == NULL) ? mcReadDatabaseHeader(codec, dbHeader) : cipherSalt;
-  globalCodecDescriptorTable[codec->m_writeCipherType-1].m_generateKey(codec->m_writeCipher, userPassword, passwordLength, 1, pDbHeader);
+  globalCodecDescriptorTable[codec->m_writeCipherType-1].m_generateKey(codec->m_writeCipher, userPassword, passwordLength, (usesWal) ? 2 : 1, pDbHeader);
 }
 
 SQLITE_PRIVATE int

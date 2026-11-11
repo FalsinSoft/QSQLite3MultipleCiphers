@@ -95,10 +95,15 @@ sqlite3mc_config(sqlite3* db, const char* paramName, int newValue)
     {
       int allowChange = 1;
 
-      /* Allow cipher change only if new cipher is actually available */
       if (sqlite3_stricmp(paramName, "cipher") == 0)
       {
+        /* Allow cipher change only if new cipher is actually available */
         allowChange = newValue > 0 && newValue <= cipherCount;
+      }
+      else if (sqlite3_stricmp(paramName, "encrypt_temp_db") == 0)
+      {
+        /* Allow only to enable unconditional encryption of temporary database */
+        allowChange = newValue > 0;
       }
 
       if (allowChange)
@@ -761,6 +766,19 @@ sqlite3mcConfigureFromUri(sqlite3* db, const char* zDbName, int configDefault)
   const char* dbFileName = zDbName;
   if (dbFileName != NULL)
   {
+    /* Handle ChaCha20 hardware acceleration option */
+    const char* chacha20HwAccelOption = sqlite3_uri_parameter(dbFileName, "mc_chacha20_hwaccel");
+    if (chacha20HwAccelOption != NULL && chacha20HwAccelOption[0] != 0)
+    {
+      const char* option = chacha20HwAccelOption;
+      option = sqlite3mcChaCha20HwConfig(option);
+      /* Invalid option values are ignored here. */
+    }
+
+    /* Enable unconditional encryption of temporary databases */
+    int encryptTempDb = sqlite3_uri_boolean(dbFileName, "encrypt_temp_db", 0);
+    sqlite3mc_config(db, "encrypt_temp_db", encryptTempDb);
+
     /* Check whether cipher is specified */
     const char* cipherName = sqlite3_uri_parameter(dbFileName, "cipher");
     if (cipherName == NULL || cipherName[0] == 0)
@@ -977,12 +995,46 @@ sqlite3mcFileControlPragma(sqlite3* db, const char* zDbName, int op, void* pArg)
       ((char**)pArg)[0] = sqlite3_mprintf("%d", value);
       rc = SQLITE_OK;
     }
+    else if (sqlite3StrICmp(pragmaName, "encrypt_temp_db") == 0)
+    {
+      int encryptTempDb = (pragmaValue != NULL) ? sqlite3GetBoolean(pragmaValue, 0) : -1;
+      int value = sqlite3mc_config(db, "encrypt_temp_db", encryptTempDb);
+      ((char**)pArg)[0] = sqlite3_mprintf("%d", value);
+      rc = SQLITE_OK;
+    }
     else if (sqlite3StrICmp(pragmaName, "mc_legacy_wal") == 0)
     {
       int walLegacy = (pragmaValue != NULL) ? sqlite3GetBoolean(pragmaValue, 0) : -1;
       int value = sqlite3mc_config(db, "mc_legacy_wal", walLegacy);
       ((char**)pArg)[0] = sqlite3_mprintf("%d", value);
       rc = SQLITE_OK;
+    }
+    else if (sqlite3StrICmp(pragmaName, "mc_aes_info") == 0)
+    {
+      const char* hwInfo = sqlite3mcHardwareInfo();
+      ((char**)pArg)[0] = sqlite3_mprintf("%s", aesHardwareAvailable() ? "hardware" : "software");
+      rc = SQLITE_OK;
+    }
+    else if (sqlite3StrICmp(pragmaName, "mc_cpu_info") == 0)
+    {
+      const char* hwInfo = sqlite3mcHardwareInfo();
+      ((char**)pArg)[0] = sqlite3_mprintf("%s", hwInfo);
+      rc = SQLITE_OK;
+    }
+    else if (sqlite3StrICmp(pragmaName, "mc_chacha20_hwaccel") == 0)
+    {
+      const char* option = (pragmaValue != NULL) ? pragmaValue : "";
+      const char* optionSelected = sqlite3mcChaCha20HwConfig(option);
+      if (optionSelected != NULL)
+      {
+        ((char**)pArg)[0] = sqlite3_mprintf("%s", optionSelected);
+        rc = SQLITE_OK;
+      }
+      else
+      {
+        ((char**)pArg)[0] = sqlite3_mprintf("Invalid ChaCha20 hardware acceleration option: %s", option);
+        rc = SQLITE_ERROR;
+      }
     }
     else if (sqlite3StrICmp(pragmaName, "cipher_salt") == 0)
     {
@@ -1074,6 +1126,7 @@ sqlite3mcFileControlPragma(sqlite3* db, const char* zDbName, int op, void* pArg)
         unsigned char* zHexKey = sqlite3_malloc(nValue/2);
         sqlite3mcConvertHex2Bin((const unsigned char*) pragmaValue, nValue, zHexKey);
         rc = sqlite3_key_v2(db, zDbName, zHexKey, nValue/2);
+        sqlite3mcSecureZeroMemory(zHexKey, nValue/2);
         sqlite3_free(zHexKey);
         if (rc == SQLITE_OK)
         {
@@ -1124,6 +1177,7 @@ sqlite3mcFileControlPragma(sqlite3* db, const char* zDbName, int op, void* pArg)
         unsigned char* zHexKey = sqlite3_malloc(nValue/2);
         sqlite3mcConvertHex2Bin((const unsigned char*) pragmaValue, nValue, zHexKey);
         rc = sqlite3_rekey_v2(db, zDbName, zHexKey, nValue/2);
+        sqlite3mcSecureZeroMemory(zHexKey, nValue/2);
         sqlite3_free(zHexKey);
         if (rc == SQLITE_OK)
         {
@@ -1289,6 +1343,7 @@ sqlite3mcCodecQueryParameters(sqlite3* db, const char* zDb, const char* zUri)
       if ((i & 1) != 0) zDecoded[i/2] = iByte;
     }
     sqlite3_key_v2(db, zDb, zDecoded, i/2);
+    sqlite3mcSecureZeroMemory(zDecoded, nKey);
     sqlite3_free(zDecoded);
   }
   else if ((zKey = sqlite3_uri_parameter(zUri, "key")) != 0)
